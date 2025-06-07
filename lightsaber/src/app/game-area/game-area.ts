@@ -1,7 +1,9 @@
-import { Component, OnInit, OnDestroy, ViewChild, ElementRef, ViewChildren, QueryList, AfterViewInit, signal } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild, ElementRef, ViewChildren, QueryList, AfterViewInit, signal, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LightsaberComponent } from '../lightsaber/lightsaber';
 import { BlasterShotComponent } from '../blaster-shot/blaster-shot';
+import { GameSettingsService } from '../services/game-settings.service';
+import { DifficultyMode } from '../models/difficulty.model';
 
 interface BlasterShot {
   id: string;
@@ -30,10 +32,27 @@ export class GameAreaComponent implements OnInit, OnDestroy, AfterViewInit {
   private gameAreaWidth: number = 0;
   private gameAreaHeight: number = 0;
 
-  readonly shotSpeed: number = 5; // Pixels per frame
+  shotSpeed: number = 5; // Pixels per frame
   readonly shotSpawnRate: number = 1500; // Milliseconds
 
-  constructor() {}
+  constructor(private gameSettingsService: GameSettingsService) {
+    // Effect to react to difficulty changes
+    effect(() => {
+      const currentDifficulty = this.gameSettingsService.getDifficultyMode()();
+      console.log('Difficulty changed to:', currentDifficulty, '. Restarting game.');
+      this.updateShotSpeed(currentDifficulty); // Update speed first
+
+      // Ensure game area dimensions are known before restarting
+      if (this.gameAreaWidth > 0 && this.gameAreaHeight > 0) {
+        this.resetGame();
+        this.startGame();
+      } else {
+        // This case might happen if difficulty changes before ngAfterViewInit has set dimensions.
+        // ngAfterViewInit will call updateShotSpeed and startGame anyway.
+        console.log('Game dimensions not yet set, startGame will be called by ngAfterViewInit.');
+      }
+    });
+  }
 
   ngOnInit(): void {
     // Game loop will be started in ngAfterViewInit to ensure view children are available
@@ -47,6 +66,9 @@ export class GameAreaComponent implements OnInit, OnDestroy, AfterViewInit {
     this.gameAreaWidth = this.gameAreaContainer.nativeElement.offsetWidth;
     this.gameAreaHeight = this.gameAreaContainer.nativeElement.offsetHeight;
 
+    // Initialize shot speed based on current difficulty setting
+    this.updateShotSpeed(this.gameSettingsService.getDifficultyMode()());
+
     if (this.lightsaberComponent && this.lightsaberComponent.el && this.lightsaberComponent.el.nativeElement) {
       // Pass game area reference to lightsaber if needed, or ensure lightsaber can find it.
       // The lightsaber currently tries to find '.game-area-container' itself.
@@ -55,6 +77,34 @@ export class GameAreaComponent implements OnInit, OnDestroy, AfterViewInit {
     }
 
     this.startGame();
+  }
+
+  updateShotSpeed(difficulty: DifficultyMode): void {
+    switch (difficulty) {
+      case DifficultyMode.Knight:
+        this.shotSpeed = 10; // Base speed (5) * 2
+        break;
+      case DifficultyMode.Master:
+        this.shotSpeed = 20; // Base speed (5) * 4
+        break;
+      case DifficultyMode.Padawan:
+      default:
+        this.shotSpeed = 5; // Base speed
+        break;
+    }
+    console.log(`Shot speed updated to: ${this.shotSpeed} for difficulty: ${difficulty}`);
+  }
+
+  resetGame(): void {
+    if (this.gameLoopInterval) {
+      clearInterval(this.gameLoopInterval);
+    }
+    if (this.shotSpawnInterval) {
+      clearInterval(this.shotSpawnInterval);
+    }
+    this.activeShots.set([]); // Clear any existing shots
+    this.score.set(0); // Reset score
+    console.log('Game has been reset.');
   }
 
   startGame(): void {
@@ -146,7 +196,6 @@ export class GameAreaComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   ngOnDestroy(): void {
-    clearInterval(this.gameLoopInterval);
-    clearInterval(this.shotSpawnInterval);
+    this.resetGame();
   }
 }

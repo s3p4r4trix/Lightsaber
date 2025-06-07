@@ -1,1 +1,7 @@
+<div class="difficulty-selector">
+  <h2>Select Difficulty:</h2>
+  <button (click)="setDifficulty('Padawan')" [class.active]="isDifficulty('Padawan')">Padawan</button>
+  <button (click)="setDifficulty('Knight')" [class.active]="isDifficulty('Knight')">Knight</button>
+  <button (click)="setDifficulty('Master')" [class.active]="isDifficulty('Master')">Master</button>
+</div>
 <app-game-area></app-game-area>
