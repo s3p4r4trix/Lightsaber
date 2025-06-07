@@ -1,0 +1,11 @@
+<div class="game-area-container" #gameAreaContainer>
+  <app-lightsaber></app-lightsaber>
+  <app-blaster-shot
+    *ngFor="let shot of activeShots"
+    [initialX]="shot.x"
+    [initialY]="shot.y"
+    [style.transform]="'translateY(' + shot.currentY + 'px)'"
+    [attr.data-id]="shot.id">
+  </app-blaster-shot>
+  <div class="score">Score: {{ score }}</div>
+</div>

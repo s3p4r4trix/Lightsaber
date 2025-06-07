@@ -1,0 +1,39 @@
+:host {
+  position: absolute;
+  bottom: 50px; /* Position it a bit above the bottom */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none; /* So it doesn't interfere with mouse events on the game area */
+}
+
+.lightsaber-beam {
+  width: 10px;
+  height: 150px;
+  background-color: #00ff00; /* Green, a classic lightsaber color */
+  border-radius: 5px 5px 0 0;
+  box-shadow: 0 0 10px #00ff00, 0 0 20px #00ff00, 0 0 30px #00ff00;
+  transition: background-color 0.1s ease; /* For potential color change effects */
+}
+
+.lightsaber-hilt {
+  width: 20px;
+  height: 40px;
+  background-color: #808080; /* Grey hilt */
+  border: 2px solid #a9a9a9;
+  border-radius: 0 0 5px 5px;
+  position: relative;
+}
+
+/* Optional: Add some detail to the hilt */
+.lightsaber-hilt::before {
+  content: '';
+  position: absolute;
+  top: 5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 8px;
+  height: 8px;
+  background-color: #d3d3d3; /* Lighter grey detail */
+  border-radius: 2px;
+}

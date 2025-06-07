@@ -1,1 +1,24 @@
 /* You can add global styles to this file, and also import other style files */
+
+/* Reset default browser margins and padding */
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  overflow: hidden; /* Prevent scrollbars if game area is precisely viewport sized */
+  font-family: Arial, sans-serif; /* Default font */
+}
+
+/* Ensure the app root takes full height as well, if needed, though GameAreaComponent forces 100vh */
+app-root {
+  display: block;
+  height: 100%;
+  width: 100%;
+}
+
+/* Any other global styles or variables can go here */
+/* For example, a global background for areas outside the game, if any */
+body {
+  background-color: #000; /* Black background for the entire page */
+}
