@@ -33,14 +33,14 @@ export class GameAreaComponent implements OnInit, OnDestroy, AfterViewInit {
   private gameAreaHeight: number = 0;
 
   shotSpeed: number = 5; // Pixels per frame
-  readonly shotSpawnRate: number = 1500; // Milliseconds
+  shotSpawnRate: number = 1500; // Milliseconds
 
   constructor(private gameSettingsService: GameSettingsService) {
     // Effect to react to difficulty changes
     effect(() => {
       const currentDifficulty = this.gameSettingsService.getDifficultyMode()();
       console.log('Difficulty changed to:', currentDifficulty, '. Restarting game.');
-      this.updateShotSpeed(currentDifficulty); // Update speed first
+      this.updateShotSpeedAndSpawnTime(currentDifficulty); // Update speed first
 
       // Ensure game area dimensions are known before restarting
       if (this.gameAreaWidth > 0 && this.gameAreaHeight > 0) {
@@ -67,7 +67,7 @@ export class GameAreaComponent implements OnInit, OnDestroy, AfterViewInit {
     this.gameAreaHeight = this.gameAreaContainer.nativeElement.offsetHeight;
 
     // Initialize shot speed based on current difficulty setting
-    this.updateShotSpeed(this.gameSettingsService.getDifficultyMode()());
+    this.updateShotSpeedAndSpawnTime(this.gameSettingsService.getDifficultyMode()());
 
     if (this.lightsaberComponent && this.lightsaberComponent.el && this.lightsaberComponent.el.nativeElement) {
       // Pass game area reference to lightsaber if needed, or ensure lightsaber can find it.
@@ -79,13 +79,15 @@ export class GameAreaComponent implements OnInit, OnDestroy, AfterViewInit {
     this.startGame();
   }
 
-  updateShotSpeed(difficulty: DifficultyMode): void {
+  updateShotSpeedAndSpawnTime(difficulty: DifficultyMode): void {
     switch (difficulty) {
       case DifficultyMode.Knight:
         this.shotSpeed = 10; // Base speed (5) * 2
+        this.shotSpawnRate = 1000; // Base (1500) - 500
         break;
       case DifficultyMode.Master:
         this.shotSpeed = 20; // Base speed (5) * 4
+        this.shotSpawnRate = 500; // Base (1500) - 1000
         break;
       case DifficultyMode.Padawan:
       default:
@@ -147,7 +149,7 @@ export class GameAreaComponent implements OnInit, OnDestroy, AfterViewInit {
     this.activeShots.update(shots => shots.filter(shot => {
       shot.currentY += this.shotSpeed;
 
-      // Remove shot if it goes off screen (bottom)
+      // Remove shot if it goes off-screen (bottom)
       if (shot.currentY > this.gameAreaHeight) {
         return false; // Remove from activeShots
       }

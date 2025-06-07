@@ -120,13 +120,13 @@ describe('GameAreaComponent', () => {
   }));
 
   it('updateShotSpeed should correctly set speeds for all difficulties', () => {
-    component.updateShotSpeed(DifficultyMode.Padawan);
+    component.updateShotSpeedAndSpawnTime(DifficultyMode.Padawan);
     expect(component.shotSpeed).toBe(5);
 
-    component.updateShotSpeed(DifficultyMode.Knight);
+    component.updateShotSpeedAndSpawnTime(DifficultyMode.Knight);
     expect(component.shotSpeed).toBe(10);
 
-    component.updateShotSpeed(DifficultyMode.Master);
+    component.updateShotSpeedAndSpawnTime(DifficultyMode.Master);
     expect(component.shotSpeed).toBe(20);
   });
 
