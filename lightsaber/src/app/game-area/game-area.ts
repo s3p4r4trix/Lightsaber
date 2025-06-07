@@ -39,7 +39,7 @@ export class GameAreaComponent implements OnInit, OnDestroy, AfterViewInit {
   @ViewChild(LightsaberComponent) lightsaberComponent!: LightsaberComponent;
   @ViewChildren(BlasterShotComponent) blasterShotComponents!: QueryList<BlasterShotComponent>;
 
-  readonly gameSettingsService = inject(GameSettingsService)
+  gameSettingsService = inject(GameSettingsService)
   public BodyPart = BodyPart; // Expose enum to template
   activeShots = signal<BlasterShot[]>([]);
   score = signal<number>(0);

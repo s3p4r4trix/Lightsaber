@@ -1,20 +1,18 @@
 import {Component, inject} from '@angular/core';
-import { RouterOutlet } from '@angular/router';
-import { GameAreaComponent } from './game-area/game-area';
-import { CommonModule } from '@angular/common'; // Add CommonModule
-
-import { GameSettingsService } from './services/game-settings.service'; // Add
-import { DifficultyMode } from './models/difficulty.model'; // Add
+import {GameAreaComponent} from './game-area/game-area';
+import {CommonModule} from '@angular/common'; // Add CommonModule
+import {GameSettingsService} from './services/game-settings.service'; // Add
+import {DifficultyMode} from './models/difficulty.model'; // Add
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, GameAreaComponent], // Add CommonModule
+  imports: [CommonModule, GameAreaComponent], // Add CommonModule
   templateUrl: './app.html',
   styleUrl: './app.scss'
 })
 export class App {
-  readonly gameSettingsService = inject(GameSettingsService)
+  gameSettingsService = inject(GameSettingsService)
   title = 'lightsaber'; // Keep existing if present
 
   setDifficulty(difficultyName: string): void {

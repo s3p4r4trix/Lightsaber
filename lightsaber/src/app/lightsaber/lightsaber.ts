@@ -12,6 +12,7 @@ export class LightsaberComponent implements OnInit {
   positionX = signal<number>(0);
   positionY = signal<number>(0);
   tiltAngle = signal<number>(0);
+  private readonly beamHeight: number = 150;
   private prevMouseX: number = 0;
   private prevMouseY: number = 0;
   private gameAreaElement: HTMLElement | null = null; // To constrain movement within game area
@@ -29,16 +30,14 @@ export class LightsaberComponent implements OnInit {
       // Combined transform for position and rotation
       this.el.nativeElement.style.transform =
         `translateX(${currentPositionX - (elementWidth / 2)}px) ` +
-        `translateY(${currentPositionY - (elementHeight / 2)}px) ` +
+        `translateY(${currentPositionY - this.beamHeight}px) ` +
         `rotateZ(${currentTiltAngle}deg)`;
     });
   }
 
   ngOnInit(): void {
-    this.positionX.set(window.innerWidth / 2);
-    this.positionY.set(window.innerHeight / 2); // Initialize positionY
-    this.prevMouseX = window.innerWidth / 2; // Initialize prevMouseX
-    this.prevMouseY = window.innerHeight / 2; // Initialize prevMouseY
+    this.prevMouseX = 0; // Initialize prevMouseX
+    this.prevMouseY = 0; // Initialize prevMouseY
     // If gameAreaElement was only for X positioning and bounds, it might not be necessary anymore.
     // For this subtask, its querySelector line is removed.
     this.gameAreaElement = null;
