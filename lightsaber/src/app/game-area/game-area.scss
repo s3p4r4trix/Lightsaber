@@ -20,6 +20,7 @@
     font-size: 24px;
     font-family: 'Orbitron', sans-serif; // Sci-fi style font (ensure imported or available)
     z-index: 10; // Make sure score is visible
+    pointer-events: none; /* Add this line */
   }
 }
 
@@ -90,6 +91,7 @@
   border-radius: 8px;
   z-index: 150; // Below overlay (200), but above game play area and score (10)
   border: 1px solid rgba(150, 150, 150, 0.7);
+  pointer-events: none; /* Add this line */
 }
 
 .humanoid-figure {

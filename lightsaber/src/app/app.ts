@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import {Component, inject} from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { GameAreaComponent } from './game-area/game-area';
 import { CommonModule } from '@angular/common'; // Add CommonModule
@@ -14,20 +14,19 @@ import { DifficultyMode } from './models/difficulty.model'; // Add
   styleUrl: './app.scss'
 })
 export class App {
+  readonly gameSettingsService = inject(GameSettingsService)
   title = 'lightsaber'; // Keep existing if present
-
-  constructor(private gameSettingsService: GameSettingsService) {}
 
   setDifficulty(difficultyName: string): void {
     let mode: DifficultyMode;
     switch (difficultyName) {
-      case 'Padawan':
+      case 'Jedi Padawan':
         mode = DifficultyMode.Padawan;
         break;
-      case 'Knight':
+      case 'Jedi Knight':
         mode = DifficultyMode.Knight;
         break;
-      case 'Master':
+      case 'Jedi Master':
         mode = DifficultyMode.Master;
         break;
       default:

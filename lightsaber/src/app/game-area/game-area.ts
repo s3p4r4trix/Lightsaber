@@ -136,6 +136,7 @@ export class GameAreaComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   startGame(): void {
+    this.isGameOver.set(false);
     if (this.isGameOver()) {
       console.log('Game is over. Not starting a new game until reset.');
       return;
@@ -168,35 +169,6 @@ export class GameAreaComponent implements OnInit, OnDestroy, AfterViewInit {
     // this.activeShots.set([]);
   }
 
-  private checkAndProcessGameOver(newlyHitPart: BodyPart): void {
-    if (this.isGameOver()) return; // Already game over, no need to re-check
-
-    const currentHits = this.hitBodyParts();
-    let gameOverTriggeredBy: BodyPart | null = null;
-
-    // Check conditions based on the newly hit part
-    if (newlyHitPart === BodyPart.Head && currentHits.has(BodyPart.Head)) {
-      gameOverTriggeredBy = BodyPart.Head;
-    } else if (newlyHitPart === BodyPart.Torso && currentHits.has(BodyPart.Torso)) {
-      gameOverTriggeredBy = BodyPart.Torso;
-    } else if (
-      (newlyHitPart === BodyPart.LeftArm || newlyHitPart === BodyPart.RightArm) &&
-      currentHits.has(BodyPart.LeftArm) &&
-      currentHits.has(BodyPart.RightArm)
-    ) {
-      // If an arm was hit and now both are hit, that arm is the trigger
-      gameOverTriggeredBy = newlyHitPart;
-    }
-    // Note: If a non-critical part like a leg is hit, gameOverTriggeredBy remains null.
-
-    if (gameOverTriggeredBy !== null) {
-      this.isGameOver.set(true);
-      this.killingBlowPart.set(gameOverTriggeredBy);
-      this.stopGameMechanics();
-      console.log(`Game Over triggered by: ${BodyPart[gameOverTriggeredBy]}. Full hits: ${Array.from(currentHits).map(p => BodyPart[p]).join(', ')}`);
-    }
-  }
-
   registerHit(): void {
     if (this.isGameOver()) return;
 
@@ -223,7 +195,7 @@ export class GameAreaComponent implements OnInit, OnDestroy, AfterViewInit {
     const partJustHit = unhitParts[randomPartIndex];
     this.hitBodyParts.update(currentParts => new Set(currentParts).add(partJustHit));
     console.log('Registered hit on:', BodyPart[partJustHit]);
-    this.checkAndProcessGameOver(partJustHit); // Call the new method with the part that was just hit
+    this.#checkAndProcessGameOver(partJustHit); // Call the new method with the part that was just hit
   }
 
   scheduleNextShot(): void {
@@ -329,5 +301,34 @@ export class GameAreaComponent implements OnInit, OnDestroy, AfterViewInit {
 
   ngOnDestroy(): void {
     this.resetGame();
+  }
+
+  #checkAndProcessGameOver(newlyHitPart: BodyPart): void {
+    if (this.isGameOver()) return; // Already game over, no need to re-check
+
+    const currentHits = this.hitBodyParts();
+    let gameOverTriggeredBy: BodyPart | null = null;
+
+    // Check conditions based on the newly hit part
+    if (newlyHitPart === BodyPart.Head && currentHits.has(BodyPart.Head)) {
+      gameOverTriggeredBy = BodyPart.Head;
+    } else if (newlyHitPart === BodyPart.Torso && currentHits.has(BodyPart.Torso)) {
+      gameOverTriggeredBy = BodyPart.Torso;
+    } else if (
+      (newlyHitPart === BodyPart.LeftArm || newlyHitPart === BodyPart.RightArm) &&
+      currentHits.has(BodyPart.LeftArm) &&
+      currentHits.has(BodyPart.RightArm)
+    ) {
+      // If an arm was hit and now both are hit, that arm is the trigger
+      gameOverTriggeredBy = newlyHitPart;
+    }
+    // Note: If a non-critical part like a leg is hit, gameOverTriggeredBy remains null.
+
+    if (gameOverTriggeredBy !== null) {
+      this.isGameOver.set(true);
+      this.killingBlowPart.set(gameOverTriggeredBy);
+      this.stopGameMechanics();
+      console.log(`Game Over triggered by: ${BodyPart[gameOverTriggeredBy]}. Full hits: ${Array.from(currentHits).map(p => BodyPart[p]).join(', ')}`);
+    }
   }
 }

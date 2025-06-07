@@ -10,45 +10,67 @@ import { CommonModule } from '@angular/common'; // Required for [style.left.px]
 })
 export class LightsaberComponent implements OnInit {
   positionX = signal<number>(0);
+  positionY = signal<number>(0);
+  tiltAngle = signal<number>(0);
+  private prevMouseX: number = 0;
+  private prevMouseY: number = 0;
   private gameAreaElement: HTMLElement | null = null; // To constrain movement within game area
 
   constructor(public el: ElementRef<HTMLElement>) {
+    // Effect for position and TILT
     effect(() => {
       const currentPositionX = this.positionX();
+      const currentPositionY = this.positionY(); // Read the Y position
+      const currentTiltAngle = this.tiltAngle(); // Get tilt angle
+
       const elementWidth = this.el.nativeElement.offsetWidth;
-      this.el.nativeElement.style.left = `${currentPositionX - (elementWidth / 2)}px`;
+      const elementHeight = this.el.nativeElement.offsetHeight; // Get element height
+
+      // Combined transform for position and rotation
+      this.el.nativeElement.style.transform =
+        `translateX(${currentPositionX - (elementWidth / 2)}px) ` +
+        `translateY(${currentPositionY - (elementHeight / 2)}px) ` +
+        `rotateZ(${currentTiltAngle}deg)`;
     });
   }
 
   ngOnInit(): void {
-    // Attempt to find the game-area element to constrain the lightsaber
-    // This assumes the lightsaber is a child of game-area or they share a common, identifiable parent
-    // A more robust solution might involve a service or Input property if direct DOM traversal is not desired
-    this.gameAreaElement = document.querySelector('.game-area-container'); // Assuming game-area has this class
-
-    // Set initial position to the center of the game area if possible
-    if (this.gameAreaElement) {
-      this.positionX.set(this.gameAreaElement.offsetWidth / 2);
-    } else {
-      this.positionX.set(window.innerWidth / 2); // Fallback to window width
-    }
+    this.positionX.set(window.innerWidth / 2);
+    this.positionY.set(window.innerHeight / 2); // Initialize positionY
+    this.prevMouseX = window.innerWidth / 2; // Initialize prevMouseX
+    this.prevMouseY = window.innerHeight / 2; // Initialize prevMouseY
+    // If gameAreaElement was only for X positioning and bounds, it might not be necessary anymore.
+    // For this subtask, its querySelector line is removed.
+    this.gameAreaElement = null;
   }
 
   @HostListener('document:mousemove', ['$event'])
   onMouseMove(event: MouseEvent) {
-    let newX = 0;
-    if (this.gameAreaElement) {
-      const gameAreaRect = this.gameAreaElement.getBoundingClientRect();
-      // Calculate mouse position relative to the game area
-      newX = event.clientX - gameAreaRect.left;
-      // Constrain lightsaber within the game area boundaries
-      const lightsaberWidth = this.el.nativeElement.offsetWidth;
-      newX = Math.max(lightsaberWidth / 2, newX);
-      newX = Math.min(gameAreaRect.width - lightsaberWidth / 2, newX);
-    } else {
-      // Fallback if game-area is not found (less accurate)
-      newX = event.clientX;
-    }
+    // Existing X position and deltaX calculation
+    const newX = event.clientX;
     this.positionX.set(newX);
+    const deltaX = newX - this.prevMouseX;
+    this.prevMouseX = newX;
+
+    // New Y position and deltaY calculation
+    const newY = event.clientY;
+    this.positionY.set(newY); // Update positionY signal
+    const deltaY = newY - this.prevMouseY;
+    this.prevMouseY = newY;
+
+    // Determine maximum tilt magnitude
+    let maxTiltMagnitude = 90;
+    if (deltaY < 0) { // Mouse moving up
+      maxTiltMagnitude = 120;
+    }
+
+    // Tilt logic based on deltaX (horizontal movement)
+    const tiltSensitivityFactor = 0.5; // Should be existing
+    let calculatedTilt = -deltaX * tiltSensitivityFactor;
+
+    // Clamp the tilt angle using the determined maxTiltMagnitude
+    const finalTilt = Math.max(-maxTiltMagnitude, Math.min(maxTiltMagnitude, calculatedTilt));
+
+    this.tiltAngle.set(finalTilt);
   }
 }
