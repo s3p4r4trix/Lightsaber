@@ -6,7 +6,6 @@ import {DifficultyMode} from './models/difficulty.model'; // Add
 
 @Component({
   selector: 'app-root',
-  standalone: true,
   imports: [CommonModule, GameAreaComponent], // Add CommonModule
   templateUrl: './app.html',
   styleUrl: './app.scss'

@@ -1,22 +1,23 @@
 import {
-  Component,
-  OnInit,
-  OnDestroy,
-  ViewChild,
-  ElementRef,
-  ViewChildren,
-  QueryList,
   AfterViewInit,
-  signal,
+  Component,
+  computed,
   effect,
-  inject, computed
+  ElementRef,
+  inject,
+  OnDestroy,
+  OnInit,
+  QueryList,
+  signal,
+  ViewChild,
+  ViewChildren
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { LightsaberComponent } from '../lightsaber/lightsaber';
-import { BlasterShotComponent } from '../blaster-shot/blaster-shot';
-import { GameSettingsService } from '../services/game-settings.service';
-import { DifficultyMode } from '../models/difficulty.model';
-import { BodyPart } from '../models/body-part.model';
+import {CommonModule} from '@angular/common';
+import {LightsaberComponent} from '../lightsaber/lightsaber';
+import {BlasterShotComponent} from '../blaster-shot/blaster-shot';
+import {GameSettingsService} from '../services/game-settings.service';
+import {DifficultyMode} from '../models/difficulty.model';
+import {BodyPart} from '../models/body-part.model';
 
 interface BlasterShot {
   id: string;
@@ -29,7 +30,6 @@ interface BlasterShot {
 
 @Component({
   selector: 'app-game-area',
-  standalone: true,
   imports: [CommonModule, LightsaberComponent, BlasterShotComponent],
   templateUrl: './game-area.html',
   styleUrls: ['./game-area.scss']

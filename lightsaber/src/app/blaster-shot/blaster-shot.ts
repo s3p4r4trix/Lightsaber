@@ -1,9 +1,8 @@
-import { Component, OnInit, HostBinding, ElementRef, input } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import {Component, ElementRef, HostBinding, input, OnInit} from '@angular/core';
+import {CommonModule} from '@angular/common';
 
 @Component({
   selector: 'app-blaster-shot',
-  standalone: true,
   imports: [CommonModule],
   templateUrl: './blaster-shot.html',
   styleUrls: ['./blaster-shot.scss']

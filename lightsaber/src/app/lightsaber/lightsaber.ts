@@ -1,9 +1,8 @@
-import { Component, HostListener, ElementRef, OnInit, signal, effect } from '@angular/core';
-import { CommonModule } from '@angular/common'; // Required for [style.left.px]
+import {Component, effect, ElementRef, HostListener, OnInit, signal} from '@angular/core';
+import {CommonModule} from '@angular/common'; // Required for [style.left.px]
 
 @Component({
   selector: 'app-lightsaber',
-  standalone: true,
   imports: [CommonModule], // Import CommonModule
   templateUrl: './lightsaber.html',
   styleUrls: ['./lightsaber.scss']
