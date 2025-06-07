@@ -1,32 +1,183 @@
 :host {
-  display: block;
+  display: block; // Ensures the component takes up space as a block
   width: 100%;
-  height: 100vh; /* Full viewport height */
-  background-color: #111; /* Dark background for space */
-  overflow: hidden; /* Prevent shots from appearing outside */
-  position: relative; /* For positioning children */
-  font-family: Arial, sans-serif;
+  height: 100%;
 }
 
 .game-area-container {
+  position: relative; // Crucial for absolute positioning of children like lightsaber and shots
   width: 100%;
   height: 100%;
-  position: relative;
+  background-color: #1e1e2f; // Darker, space-like background
+  overflow: hidden; // Keep shots and other elements from appearing outside
+  cursor: none; // Hide default cursor as lightsaber will follow mouse
+
+  .score-display {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    color: #ffd700; // Gold color for score
+    font-size: 24px;
+    font-family: 'Orbitron', sans-serif; // Sci-fi style font (ensure imported or available)
+    z-index: 10; // Make sure score is visible
+  }
 }
 
-app-lightsaber {
-  z-index: 10; /* Ensure lightsaber is above blaster shots */
+// Game Play Area Styling for Game Over state
+.game-play-area {
+  width: 100%;
+  height: 100%;
+  position: relative; // For positioning elements within if needed
+  transition: filter 0.5s ease-in-out; // Smooth transition for blur
+
+  &.game-over-active {
+    filter: blur(5px) grayscale(50%); // Example: blur and desaturate background game
+  }
 }
 
-app-blaster-shot {
-  z-index: 5;
-}
-
-.score {
+// Game Over Overlay Styles
+.game-over-overlay {
   position: absolute;
-  top: 20px;
-  left: 20px;
-  color: #fff;
-  font-size: 24px;
-  z-index: 100;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.65); // Semi-transparent black
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 200; // Above game-play-area, score, and hit-counter
+}
+
+.game-over-message-box {
+  background-color: rgba(20, 20, 40, 0.9); // Dark blue, slightly transparent
+  color: #e0e0e0; // Light grey text
+  padding: 30px 40px;
+  border-radius: 15px;
+  text-align: center;
+  font-family: 'Orbitron', sans-serif; // Sci-fi font
+  border: 2px solid #ffd700; // Gold border, matching score
+  box-shadow: 0 0 25px rgba(255, 215, 0, 0.5); // Gold glow
+
+  h1 {
+    color: #ff4500; // Orange-red for "Game Over"
+    font-size: 3em;
+    margin-bottom: 20px;
+    text-shadow: 0 0 10px #ff4500;
+  }
+
+  p {
+    font-size: 1.2em;
+    margin: 10px 0;
+    line-height: 1.6;
+  }
+
+  .final-hits-info {
+    font-size: 0.9em;
+    color: #aaa; // Lighter grey for less prominent info
+    margin-top: 20px;
+  }
+}
+
+
+// Hit Counter Styles
+.hit-counter-container {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 8px;
+  background-color: rgba(50, 50, 50, 0.6); // Semi-transparent dark background
+  border-radius: 8px;
+  z-index: 150; // Below overlay (200), but above game play area and score (10)
+  border: 1px solid rgba(150, 150, 150, 0.7);
+}
+
+.humanoid-figure {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  .body-part {
+    background-color: #4CAF50; // A healthy green color
+    border: 1px solid #388E3C; // Darker green border
+    margin-bottom: 2px; // Spacing for vertical parts
+
+    &.hit {
+      background-color: #F44336 !important; // Bright red for hit
+      border-color: #D32F2F !important; // Darker red border for hit
+      opacity: 0.6; // Slightly faded when hit
+      // text-decoration: line-through; // Optional: if there was text
+    }
+
+    &.killing-blow {
+      // Override .hit styles and add more emphasis
+      background-color: gold !important;
+      opacity: 1 !important;
+      border: 2px solid yellow !important;
+      box-shadow: 0 0 10px 5px gold; // Initial state for animation
+      animation: pulse-animation 0.75s infinite alternate;
+      transform-origin: center; // Ensure scaling is from the center
+      position: relative; // Needed for z-index if want to ensure it's "on top" of siblings
+      z-index: 1; // Ensure it's visually on top of other non-killing-blow parts if overlap
+    }
+  }
+
+  .head {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+  }
+
+  .torso-arms-container {
+    display: flex;
+    align-items: flex-start; // Align arms to the top of the torso block
+    justify-content: center;
+    margin-bottom: 2px;
+  }
+
+  .torso {
+    width: 28px;
+    height: 45px;
+    margin: 0 2px; // Give space for arms if they were directly adjacent without explicit positioning
+  }
+
+  .arm {
+    width: 10px;
+    height: 38px; // Slightly shorter than torso
+    background-color: #8BC34A; // Lighter green for limbs
+    border-color: #689F38;
+
+    &.left-arm {
+      // order: -1; // if flex items, or rely on margin/positioning
+    }
+
+    &.right-arm {
+      // order: 1;
+    }
+  }
+
+  .legs-container {
+    display: flex;
+    justify-content: center;
+  }
+
+  .leg {
+    width: 12px;
+    height: 40px;
+    background-color: #8BC34A; // Lighter green for limbs
+    border-color: #689F38;
+    margin: 0 2px; // Spacing between legs
+  }
+}
+
+// Keyframes for the pulse animation
+@keyframes pulse-animation {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 8px 4px gold;
+  }
+  100% { // Changed to 100% for alternate direction, effectively 50% of a full non-alternating animation
+    transform: scale(1.1);
+    box-shadow: 0 0 15px 7px yellow; // Slightly different shadow color for pulse peak
+  }
 }
