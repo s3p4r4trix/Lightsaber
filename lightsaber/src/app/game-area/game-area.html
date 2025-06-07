@@ -1,11 +1,12 @@
 <div class="game-area-container" #gameAreaContainer>
   <app-lightsaber></app-lightsaber>
-  <app-blaster-shot
-    *ngFor="let shot of activeShots"
-    [initialX]="shot.x"
-    [initialY]="shot.y"
-    [style.transform]="'translateY(' + shot.currentY + 'px)'"
-    [attr.data-id]="shot.id">
-  </app-blaster-shot>
-  <div class="score">Score: {{ score }}</div>
+  @for (shot of activeShots(); track shot.id) {
+    <app-blaster-shot
+      [initialX]="shot.x"
+      [initialY]="shot.y"
+      [style.transform]="'translateY(' + shot.currentY + 'px)'"
+      [id]="shot.id">
+    </app-blaster-shot>
+  }
+  <div class="score">Score: {{ score() }}</div> <!-- This line needs to change -->
 </div>

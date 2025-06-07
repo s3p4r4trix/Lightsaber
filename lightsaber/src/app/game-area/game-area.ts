@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ViewChild, ElementRef, ChangeDetectorRef, ViewChildren, QueryList, AfterViewInit } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild, ElementRef, ViewChildren, QueryList, AfterViewInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LightsaberComponent } from '../lightsaber/lightsaber';
 import { BlasterShotComponent } from '../blaster-shot/blaster-shot';
@@ -23,8 +23,8 @@ export class GameAreaComponent implements OnInit, OnDestroy, AfterViewInit {
   @ViewChild(LightsaberComponent) lightsaberComponent!: LightsaberComponent;
   @ViewChildren(BlasterShotComponent) blasterShotComponents!: QueryList<BlasterShotComponent>;
 
-  activeShots: BlasterShot[] = [];
-  score: number = 0;
+  activeShots = signal<BlasterShot[]>([]);
+  score = signal<number>(0);
   private gameLoopInterval: any;
   private shotSpawnInterval: any;
   private gameAreaWidth: number = 0;
@@ -33,7 +33,7 @@ export class GameAreaComponent implements OnInit, OnDestroy, AfterViewInit {
   readonly shotSpeed: number = 5; // Pixels per frame
   readonly shotSpawnRate: number = 1500; // Milliseconds
 
-  constructor(private cdr: ChangeDetectorRef) {}
+  constructor() {}
 
   ngOnInit(): void {
     // Game loop will be started in ngAfterViewInit to ensure view children are available
@@ -58,8 +58,8 @@ export class GameAreaComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   startGame(): void {
-    this.activeShots = [];
-    this.score = 0;
+    this.activeShots.set([]);
+    this.score.set(0);
 
     this.gameLoopInterval = setInterval(() => {
       this.updateGame();
@@ -81,7 +81,7 @@ export class GameAreaComponent implements OnInit, OnDestroy, AfterViewInit {
       y: 0, // Start at the top
       currentY: 0,
     };
-    this.activeShots.push(newShot);
+    this.activeShots.update(shots => [...shots, newShot]);
   }
 
   updateGame(): void {
@@ -94,7 +94,7 @@ export class GameAreaComponent implements OnInit, OnDestroy, AfterViewInit {
 
 
     // Move shots and check for collisions
-    this.activeShots = this.activeShots.filter(shot => {
+    this.activeShots.update(shots => shots.filter(shot => {
       shot.currentY += this.shotSpeed;
 
       // Remove shot if it goes off screen (bottom)
@@ -105,7 +105,7 @@ export class GameAreaComponent implements OnInit, OnDestroy, AfterViewInit {
       // Collision detection
       // We need the actual rendered positions of blaster shots.
       // Using their 'id' to find the corresponding DOM element or component instance.
-      const shotComponentInstance = this.blasterShotComponents.find(c => c.id === shot.id);
+      const shotComponentInstance = this.blasterShotComponents.find(c => c.id() === shot.id);
 
       if (shotComponentInstance && shotComponentInstance.el && shotComponentInstance.el.nativeElement) {
         const shotRect = shotComponentInstance.el.nativeElement.getBoundingClientRect();
@@ -134,7 +134,7 @@ export class GameAreaComponent implements OnInit, OnDestroy, AfterViewInit {
           currentShotY < lightsaberTop + lightsaberRect.height && // Check bottom of shot against top of lightsaber
           currentShotY + shotElementHeight > lightsaberTop      // Check top of shot against bottom of lightsaber (hilt)
         ) {
-          this.score++;
+          this.score.update(s => s + 1);
           // Potentially add a sound effect or visual feedback for deflection
           return false; // Remove shot from activeShots (deflected)
         }
@@ -142,8 +142,7 @@ export class GameAreaComponent implements OnInit, OnDestroy, AfterViewInit {
         console.warn(`BlasterShotComponent instance not found for id: ${shot.id}`);
       }
       return true; // Keep shot
-    });
-    this.cdr.detectChanges(); // Trigger change detection as array is modified
+    }));
   }
 
   ngOnDestroy(): void {

@@ -1,4 +1,4 @@
-import { Component, HostListener, ElementRef, Renderer2, OnInit } from '@angular/core';
+import { Component, HostListener, ElementRef, OnInit, signal, effect } from '@angular/core';
 import { CommonModule } from '@angular/common'; // Required for [style.left.px]
 
 @Component({
@@ -9,10 +9,16 @@ import { CommonModule } from '@angular/common'; // Required for [style.left.px]
   styleUrls: ['./lightsaber.scss']
 })
 export class LightsaberComponent implements OnInit {
-  positionX: number = 0;
+  positionX = signal<number>(0);
   private gameAreaElement: HTMLElement | null = null; // To constrain movement within game area
 
-  constructor(public el: ElementRef<HTMLElement>, private renderer: Renderer2) {}
+  constructor(public el: ElementRef<HTMLElement>) {
+    effect(() => {
+      const currentPositionX = this.positionX();
+      const elementWidth = this.el.nativeElement.offsetWidth;
+      this.el.nativeElement.style.left = `${currentPositionX - (elementWidth / 2)}px`;
+    });
+  }
 
   ngOnInit(): void {
     // Attempt to find the game-area element to constrain the lightsaber
@@ -22,35 +28,27 @@ export class LightsaberComponent implements OnInit {
 
     // Set initial position to the center of the game area if possible
     if (this.gameAreaElement) {
-      this.positionX = this.gameAreaElement.offsetWidth / 2;
+      this.positionX.set(this.gameAreaElement.offsetWidth / 2);
     } else {
-      this.positionX = window.innerWidth / 2; // Fallback to window width
+      this.positionX.set(window.innerWidth / 2); // Fallback to window width
     }
-    this.updatePosition();
   }
 
   @HostListener('document:mousemove', ['$event'])
   onMouseMove(event: MouseEvent) {
+    let newX = 0;
     if (this.gameAreaElement) {
       const gameAreaRect = this.gameAreaElement.getBoundingClientRect();
       // Calculate mouse position relative to the game area
-      this.positionX = event.clientX - gameAreaRect.left;
+      newX = event.clientX - gameAreaRect.left;
       // Constrain lightsaber within the game area boundaries
       const lightsaberWidth = this.el.nativeElement.offsetWidth;
-      this.positionX = Math.max(lightsaberWidth / 2, this.positionX);
-      this.positionX = Math.min(gameAreaRect.width - lightsaberWidth / 2, this.positionX);
+      newX = Math.max(lightsaberWidth / 2, newX);
+      newX = Math.min(gameAreaRect.width - lightsaberWidth / 2, newX);
     } else {
       // Fallback if game-area is not found (less accurate)
-      this.positionX = event.clientX;
+      newX = event.clientX;
     }
-    this.updatePosition();
-  }
-
-  private updatePosition() {
-    // Use renderer for better abstraction, or directly set style if preferred
-    // this.renderer.setStyle(this.el.nativeElement, 'left', `${this.positionX - (this.el.nativeElement.offsetWidth / 2)}px`);
-    // Using [style.left.px] in the template is cleaner if CommonModule is imported.
-    // For direct style manipulation for performance:
-    this.el.nativeElement.style.left = `${this.positionX - (this.el.nativeElement.offsetWidth / 2)}px`;
+    this.positionX.set(newX);
   }
 }

@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, HostBinding, ElementRef } from '@angular/core';
+import { Component, OnInit, HostBinding, ElementRef, input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 @Component({
@@ -9,8 +9,9 @@ import { CommonModule } from '@angular/common';
   styleUrls: ['./blaster-shot.scss']
 })
 export class BlasterShotComponent implements OnInit {
-  @Input() initialX: number = 0;
-  @Input() initialY: number = 0;
+  id = input.required<string>();
+  initialX = input<number>(0);
+  initialY = input<number>(0);
 
   @HostBinding('style.left.px')
   currentX: number = 0;
@@ -18,13 +19,11 @@ export class BlasterShotComponent implements OnInit {
   @HostBinding('style.top.px')
   currentY: number = 0;
 
-  public id: string = `blaster-shot-${Math.random().toString(36).substring(2, 9)}`; // Unique ID for tracking
-
   constructor(public el: ElementRef<HTMLElement>) {}
 
   ngOnInit(): void {
-    this.currentX = this.initialX;
-    this.currentY = this.initialY;
+    this.currentX = this.initialX();
+    this.currentY = this.initialY();
   }
 
   // The GameAreaComponent will be responsible for updating currentY to move the shot.
