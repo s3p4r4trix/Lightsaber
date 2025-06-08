@@ -3,6 +3,7 @@ import {GameAreaComponent} from './game-area/game-area';
 import {CommonModule} from '@angular/common'; // Add CommonModule
 import {GameSettingsService} from './services/game-settings.service'; // Add
 import {DifficultyMode} from './models/difficulty.model'; // Add
+import {GameState} from './models/game-state.model'; // Add
 
 @Component({
   selector: 'app-root',
@@ -11,8 +12,10 @@ import {DifficultyMode} from './models/difficulty.model'; // Add
   styleUrl: './app.scss'
 })
 export class App {
-  gameSettingsService = inject(GameSettingsService)
+  gameSettingsService = inject(GameSettingsService);
   title = 'lightsaber'; // Keep existing if present
+  currentGameState = this.gameSettingsService.getGameState(); // Add
+  GameState = GameState; // Expose GameState to template
 
   setDifficulty(difficultyName: string): void {
     let mode: DifficultyMode;
@@ -30,6 +33,7 @@ export class App {
         mode = DifficultyMode.Padawan; // Default fallback
     }
     this.gameSettingsService.setDifficultyMode(mode);
+    this.gameSettingsService.setGameState(GameState.Playing); // Add
     console.log(`Difficulty set to: ${mode}`);
   }
 

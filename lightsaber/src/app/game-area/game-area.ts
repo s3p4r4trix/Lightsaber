@@ -17,6 +17,7 @@ import {LightsaberComponent} from '../lightsaber/lightsaber';
 import {BlasterShotComponent} from '../blaster-shot/blaster-shot';
 import {GameSettingsService} from '../services/game-settings.service';
 import {DifficultyMode} from '../models/difficulty.model';
+import {GameState} from '../models/game-state.model';
 import {BodyPart} from '../models/body-part.model';
 
 interface BlasterShot {
@@ -39,8 +40,10 @@ export class GameAreaComponent implements OnInit, OnDestroy, AfterViewInit {
   @ViewChild(LightsaberComponent) lightsaberComponent!: LightsaberComponent;
   @ViewChildren(BlasterShotComponent) blasterShotComponents!: QueryList<BlasterShotComponent>;
 
-  gameSettingsService = inject(GameSettingsService)
+  gameSettingsService = inject(GameSettingsService);
+  currentGameState = this.gameSettingsService.getGameState();
   public BodyPart = BodyPart; // Expose enum to template
+  public GameState = GameState; // Expose enum to template
   activeShots = signal<BlasterShot[]>([]);
   score = signal<number>(0);
   hitBodyParts = signal<Set<BodyPart>>(new Set());
@@ -61,17 +64,24 @@ export class GameAreaComponent implements OnInit, OnDestroy, AfterViewInit {
     // Effect to react to difficulty changes
     effect(() => {
       const currentDifficulty = this.gameSettingsService.getDifficultyMode()();
-      console.log('Difficulty changed to:', currentDifficulty, '. Restarting game.');
+      console.log('Difficulty changed to:', currentDifficulty);
       this.updateShotSpeedAndSpawnTime(currentDifficulty); // Update speed first
+      // resetGame and startGame are now handled by the GameState effect
+    });
 
-      // Ensure game area dimensions are known before restarting
-      if (this.gameAreaWidth > 0 && this.gameAreaHeight > 0) {
-        this.resetGame();
-        this.startGame();
-      } else {
-        // This case might happen if difficulty changes before ngAfterViewInit has set dimensions.
-        // ngAfterViewInit will call updateShotSpeed and startGame anyway.
-        console.log('Game dimensions not yet set, startGame will be called by ngAfterViewInit.');
+    // Effect to react to GameState changes
+    effect(() => {
+      const state = this.currentGameState();
+      console.log('GameState changed to:', state);
+      switch (state) {
+        case GameState.Playing:
+          this.resetGame(); // Ensure clean state before starting
+          this.startGame();
+          break;
+        case GameState.DifficultySelection:
+        case GameState.GameOver:
+          this.stopGameMechanics(); // Stop intervals, timeouts
+          break;
       }
     });
   }
@@ -97,8 +107,6 @@ export class GameAreaComponent implements OnInit, OnDestroy, AfterViewInit {
     } else {
       console.error("Lightsaber component not found after view init!");
     }
-
-    this.startGame();
   }
 
   updateShotSpeedAndSpawnTime(difficulty: DifficultyMode): void {
@@ -136,15 +144,16 @@ export class GameAreaComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   startGame(): void {
-    this.isGameOver.set(false);
-    if (this.isGameOver()) {
-      console.log('Game is over. Not starting a new game until reset.');
+    if (this.currentGameState() !== GameState.Playing) {
+      console.log('Not in Playing state, startGame() aborted.');
       return;
     }
+
+    // activeShots and score are reset in resetGame.
     this.activeShots.set([]);
     this.score.set(0);
-    // hitBodyParts and isGameOver are reset in resetGame, which is called before startGame by difficulty effect
 
+    console.log('startGame called in Playing state.');
     this.gameLoopInterval = setInterval(() => {
       this.updateGame();
     }, 16); // Roughly 60 FPS
@@ -186,8 +195,8 @@ export class GameAreaComponent implements OnInit, OnDestroy, AfterViewInit {
       // We already check isGameOver at the start.
       console.log('All body parts have been hit.');
       // Potentially trigger a different game over if all parts hit is a specific condition
-      // this.isGameOver.set(true);
-      // this.stopGameMechanics();
+      this.isGameOver.set(true);
+      this.stopGameMechanics();
       return;
     }
 
@@ -322,11 +331,12 @@ export class GameAreaComponent implements OnInit, OnDestroy, AfterViewInit {
       // If an arm was hit and now both are hit, that arm is the trigger
       gameOverTriggeredBy = newlyHitPart;
     }
-    // Note: If a non-critical part like a leg is hit, gameOverTriggeredBy remains null.
 
+    // Note: If a non-critical part like a leg is hit, gameOverTriggeredBy remains null.
     if (gameOverTriggeredBy !== null) {
       this.isGameOver.set(true);
       this.killingBlowPart.set(gameOverTriggeredBy);
+      this.gameSettingsService.setGameState(GameState.GameOver);
       this.stopGameMechanics();
       console.log(`Game Over triggered by: ${BodyPart[gameOverTriggeredBy]}. Full hits: ${Array.from(currentHits).map(p => BodyPart[p]).join(', ')}`);
     }

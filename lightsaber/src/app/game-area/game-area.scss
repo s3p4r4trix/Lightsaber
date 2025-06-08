@@ -10,7 +10,7 @@
   height: 100%;
   background-color: #1e1e2f; // Darker, space-like background
   overflow: hidden; // Keep shots and other elements from appearing outside
-  cursor: none; // Hide default cursor as lightsaber will follow mouse
+  //cursor: none; // Hide default cursor as lightsaber will follow mouse
 
   .score-display {
     position: absolute;
@@ -48,6 +48,14 @@
   justify-content: center;
   align-items: center;
   z-index: 200; // Above game-play-area, score, and hit-counter
+}
+
+.game-intro-message {
+  background-color: #3e2f1e2f;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: #fff;
 }
 
 .game-over-message-box {

@@ -1,63 +1,72 @@
 <div class="game-area-container" #gameAreaContainer>
-  <div class="score-display">Score: {{ score() }}</div>
+  @if (currentGameState() === GameState.DifficultySelection) {
+    <div class="game-intro-message">
+      <h2>Welcome, young Padawan!</h2>
+      <p>Select a difficulty to begin your training.</p>
+    </div>
+  }
 
-  <div class="hit-counter-container">
-    <div class="humanoid-figure">
-      <!-- Head -->
-      <div class="body-part head"
-           [class.hit]="hitBodyParts().has(BodyPart.Head)"
-           [class.killing-blow]="killingBlowPart() === BodyPart.Head"></div>
-      <!-- Torso & Arms Container -->
-      <div class="torso-arms-container">
-        <!-- Left Arm -->
-        <div class="body-part left-arm arm"
-             [class.hit]="hitBodyParts().has(BodyPart.LeftArm)"
-             [class.killing-blow]="killingBlowPart() === BodyPart.LeftArm"></div>
-        <!-- Torso -->
-        <div class="body-part torso"
-             [class.hit]="hitBodyParts().has(BodyPart.Torso)"
-             [class.killing-blow]="killingBlowPart() === BodyPart.Torso"></div>
-        <!-- Right Arm -->
-        <div class="body-part right-arm arm"
-             [class.hit]="hitBodyParts().has(BodyPart.RightArm)"
-             [class.killing-blow]="killingBlowPart() === BodyPart.RightArm"></div>
-      </div>
-      <!-- Legs Container -->
-      <div class="legs-container">
-        <!-- Left Leg -->
-        <div class="body-part left-leg leg"
-             [class.hit]="hitBodyParts().has(BodyPart.LeftLeg)"
-             [class.killing-blow]="killingBlowPart() === BodyPart.LeftLeg"></div>
-        <!-- Right Leg -->
-        <div class="body-part right-leg leg"
-             [class.hit]="hitBodyParts().has(BodyPart.RightLeg)"
-             [class.killing-blow]="killingBlowPart() === BodyPart.RightLeg"></div>
+  @if (currentGameState() === GameState.Playing || currentGameState() === GameState.GameOver) {
+    <div class="score-display">Score: {{ score() }}</div>
+
+    <div class="hit-counter-container">
+      <div class="humanoid-figure">
+        <!-- Head -->
+        <div class="body-part head"
+             [class.hit]="hitBodyParts().has(BodyPart.Head)"
+             [class.killing-blow]="killingBlowPart() === BodyPart.Head"></div>
+        <!-- Torso & Arms Container -->
+        <div class="torso-arms-container">
+          <!-- Left Arm -->
+          <div class="body-part left-arm arm"
+               [class.hit]="hitBodyParts().has(BodyPart.LeftArm)"
+               [class.killing-blow]="killingBlowPart() === BodyPart.LeftArm"></div>
+          <!-- Torso -->
+          <div class="body-part torso"
+               [class.hit]="hitBodyParts().has(BodyPart.Torso)"
+               [class.killing-blow]="killingBlowPart() === BodyPart.Torso"></div>
+          <!-- Right Arm -->
+          <div class="body-part right-arm arm"
+               [class.hit]="hitBodyParts().has(BodyPart.RightArm)"
+               [class.killing-blow]="killingBlowPart() === BodyPart.RightArm"></div>
+        </div>
+        <!-- Legs Container -->
+        <div class="legs-container">
+          <!-- Left Leg -->
+          <div class="body-part left-leg leg"
+               [class.hit]="hitBodyParts().has(BodyPart.LeftLeg)"
+               [class.killing-blow]="killingBlowPart() === BodyPart.LeftLeg"></div>
+          <!-- Right Leg -->
+          <div class="body-part right-leg leg"
+               [class.hit]="hitBodyParts().has(BodyPart.RightLeg)"
+               [class.killing-blow]="killingBlowPart() === BodyPart.RightLeg"></div>
+        </div>
       </div>
     </div>
-  </div>
 
-  <div class="game-play-area" [class.game-over-active]="isGameOver()">
-    <app-lightsaber></app-lightsaber>
+    <div class="game-play-area" [class.game-over-active]="isGameOver()">
+      <app-lightsaber></app-lightsaber>
 
-    <!-- Display active blaster shots -->
-    @for (shot of activeShots(); track shot.id) {
-      <app-blaster-shot
-        [id]="shot.id"
-        [style.transform]="'translateY(' + shot.currentY + 'px)'"
-        [style.left]="shot.x + 'px'">
-      </app-blaster-shot>
+      <!-- Display active blaster shots -->
+      @for (shot of activeShots(); track shot.id) {
+        <app-blaster-shot
+          [id]="shot.id"
+          [style.transform]="'translateY(' + shot.currentY + 'px)'"
+          [style.left]="shot.x + 'px'">
+        </app-blaster-shot>
+      }
+    </div>
+
+    <!-- Game Over Overlay -->
+    @if (isGameOver()) {
+      <div class="game-over-overlay">
+        <div class="game-over-message-box"> <!-- Renamed from game-over-message to avoid conflict with old class -->
+          <h1>Game Over</h1>
+          <p>Your journey ends here, for now.</p>
+          <p>Select a new difficulty to begin your training again.</p>
+          <p class="final-hits-info">Deflected: {{ score() }} | Body parts hit: {{ printHitBodyParts() }}</p>
+        </div>
+      </div>
     }
-  </div>
-
-  <!-- Game Over Overlay -->
-  @if (isGameOver()) {
-    <div class="game-over-overlay">
-      <div class="game-over-message-box"> <!-- Renamed from game-over-message to avoid conflict with old class -->
-        <h1>Game Over</h1>
-        <p>Your journey ends here, for now.</p>
-        <p>Select a new difficulty to begin your training again.</p>
-        <p class="final-hits-info">Deflected: {{ score() }} | Body parts hit: {{ printHitBodyParts() }}</p>
-      </div>
-    </div>
   }
 </div>
