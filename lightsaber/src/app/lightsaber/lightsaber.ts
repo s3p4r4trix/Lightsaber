@@ -12,9 +12,17 @@ export class LightsaberComponent implements OnInit {
   positionY = signal<number>(0);
   tiltAngle = signal<number>(0);
   private readonly beamHeight: number = 150;
+  private readonly hiltHeight: number = 40;
   private prevMouseX: number = 0;
   private prevMouseY: number = 0;
   private gameAreaElement: HTMLElement | null = null; // To constrain movement within game area
+
+  // Properties for tilt return mechanism
+  private lastMouseActivityTime: number = Date.now();
+  private readonly MOUSE_IDLE_TIMEOUT_MS = 100;
+  private readonly TILT_RETURN_INTERVAL_MS = 50;
+  private readonly TILT_DECAY_FACTOR = 0.8;
+  private readonly MIN_TILT_TO_RETURN = 0.5;
 
   constructor(public el: ElementRef<HTMLElement>) {
     // Effect for position and TILT
@@ -29,7 +37,7 @@ export class LightsaberComponent implements OnInit {
       // Combined transform for position and rotation
       this.el.nativeElement.style.transform =
         `translateX(${currentPositionX - (elementWidth / 2)}px) ` +
-        `translateY(${currentPositionY - this.beamHeight}px) ` +
+        `translateY(${currentPositionY - (elementHeight * 6.1)}px) ` +
         `rotateZ(${currentTiltAngle}deg)`;
     });
   }
@@ -37,13 +45,25 @@ export class LightsaberComponent implements OnInit {
   ngOnInit(): void {
     this.prevMouseX = 0; // Initialize prevMouseX
     this.prevMouseY = 0; // Initialize prevMouseY
-    // If gameAreaElement was only for X positioning and bounds, it might not be necessary anymore.
-    // For this subtask, its querySelector line is removed.
-    this.gameAreaElement = null;
+
+    // Ensure transformOrigin is set here; once nativeElement is available
+    this.el.nativeElement.style.transformOrigin = `50% ${this.beamHeight + (this.hiltHeight / 2)}px`; // Updated line
+
+    setInterval(() => {
+      if (Date.now() - this.lastMouseActivityTime > this.MOUSE_IDLE_TIMEOUT_MS) {
+        if (Math.abs(this.tiltAngle()) > this.MIN_TILT_TO_RETURN) {
+          this.tiltAngle.set(this.tiltAngle() * this.TILT_DECAY_FACTOR);
+        } else if (this.tiltAngle() !== 0) {
+          this.tiltAngle.set(0); // Snap to zero if very close
+        }
+      }
+    }, this.TILT_RETURN_INTERVAL_MS);
   }
 
   @HostListener('document:mousemove', ['$event'])
   onMouseMove(event: MouseEvent) {
+    this.lastMouseActivityTime = Date.now(); // Update activity time
+
     // Existing X position and deltaX calculation
     const newX = event.clientX;
     this.positionX.set(newX);
@@ -63,7 +83,7 @@ export class LightsaberComponent implements OnInit {
     }
 
     // Tilt logic based on deltaX (horizontal movement)
-    const tiltSensitivityFactor = 5; // Should be existing
+    const tiltSensitivityFactor = 0.7; // Should be existing
     let calculatedTilt = -deltaX * tiltSensitivityFactor;
 
     // Clamp the tilt angle using the determined maxTiltMagnitude
