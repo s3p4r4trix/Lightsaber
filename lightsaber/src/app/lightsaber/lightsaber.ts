@@ -63,7 +63,7 @@ export class LightsaberComponent implements OnInit {
     }
 
     // Tilt logic based on deltaX (horizontal movement)
-    const tiltSensitivityFactor = 0.5; // Should be existing
+    const tiltSensitivityFactor = 0.7; // Should be existing
     let calculatedTilt = -deltaX * tiltSensitivityFactor;
 
     // Clamp the tilt angle using the determined maxTiltMagnitude
