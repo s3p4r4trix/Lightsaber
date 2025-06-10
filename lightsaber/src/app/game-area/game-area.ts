@@ -74,7 +74,7 @@ export class GameAreaComponent implements OnDestroy, AfterViewInit {
       console.log('GameState changed to:', state);
       switch (state) {
         case GameState.Playing:
-          this.resetGame(); // Ensure clean state before starting
+          this.resetGame(); // Ensure a clean state before starting
           // Use Promise.resolve().then() to ensure view updates and @ViewChild are available
           Promise.resolve().then(() => {
             if (!this.gameAreaContainer || !this.gameAreaContainer.nativeElement) {
@@ -145,11 +145,13 @@ export class GameAreaComponent implements OnDestroy, AfterViewInit {
     if (this.#shotTimerId) {
       clearTimeout(this.#shotTimerId);
     }
-    this.activeShots.set([]); // Clear any existing shots
-    this.score.set(0); // Reset score
-    this.hitBodyParts.set(new Set()); // Reset hit body parts
-    this.isGameOver.set(false); // Reset game over state
-    this.killingBlowPart.set(null); // Reset killing blow part
+
+    // Reset game values
+    this.activeShots.set([]);
+    this.score.set(0);
+    this.hitBodyParts.set(new Set());
+    this.isGameOver.set(false);
+    this.killingBlowPart.set(null);
     console.log('Game has been reset.');
   }
 
