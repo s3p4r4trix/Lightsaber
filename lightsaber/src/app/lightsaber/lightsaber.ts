@@ -15,7 +15,7 @@ export class LightsaberComponent implements OnInit {
   // Properties for damped movement
   #targetX: number = 0;
   #targetY: number = 0;
-  readonly #dampingFactor: number = 0.08;
+  readonly #dampingFactor: number = 0.12;
   #movementInterval: any;
 
   readonly #beamHeight: number = 150;
