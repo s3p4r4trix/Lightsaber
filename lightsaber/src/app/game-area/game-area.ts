@@ -36,6 +36,20 @@ interface BlasterShot {
   styleUrls: ['./game-area.scss']
 })
 export class GameAreaComponent implements OnInit, OnDestroy, AfterViewInit {
+  // Helper function for collision detection
+  private isPointInPolygon(point: { x: number, y: number }, polygon: { x: number, y: number }[]): boolean {
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const xi = polygon[i].x, yi = polygon[i].y;
+      const xj = polygon[j].x, yj = polygon[j].y;
+
+      const intersect = ((yi > point.y) !== (yj > point.y))
+        && (point.x < (xj - xi) * (point.y - yi) / (yj - yi) + xi);
+      if (intersect) inside = !inside;
+    }
+    return inside;
+  }
+
   @ViewChild('gameAreaContainer') gameAreaContainer!: ElementRef<HTMLDivElement>;
   @ViewChild(LightsaberComponent) lightsaberComponent!: LightsaberComponent;
   @ViewChildren(BlasterShotComponent) blasterShotComponents!: QueryList<BlasterShotComponent>;
@@ -287,65 +301,88 @@ export class GameAreaComponent implements OnInit, OnDestroy, AfterViewInit {
 
       // Collision detection
       if (shotComponentInstance && shotComponentInstance.el && shotComponentInstance.el.nativeElement) {
+        // TODO: Ideally, get these from LightsaberComponent's properties
+        const beamHeight = 150; // px 
+        const hiltHeight = 40; // px
+        const bladeWidth = 10; // px
+
+        // Get Lightsaber State Directly
+        const tiltAngleDeg = this.lightsaberComponent.tiltAngle();
+        const tiltAngleRad = tiltAngleDeg * (Math.PI / 180);
+
+        // Game Area Relative Lightsaber Pivot Position
+        // lightsaberRect is already available from outer scope
+        const pivotX_gameAreaRelative = this.lightsaberComponent.positionX() - gameAreaRect.left;
+
+        // New calculation for pivotY_gameAreaRelative
+        const componentElementHeight = beamHeight + hiltHeight;
+        const transformOriginY_inElement = beamHeight + hiltHeight / 2;
+        // This next line replicates the LightsaberComponent's style.transform calculation for translateY
+        const appliedTranslateY = this.lightsaberComponent.positionY() - componentElementHeight;
+        const pivotY_viewport = appliedTranslateY + transformOriginY_inElement;
+        const pivotY_gameAreaRelative = pivotY_viewport - gameAreaRect.top;
+
+        // Define Blade Local Coordinates (relative to Pivot at hilt bottom-center, Y increases upwards)
+        // Pivot is effectively at the center of the lightsaber's rotation point as defined by its transformOrigin.
+        // The blade extends upwards from the hilt.
+
+        // Implement generous collision model
+        const collisionBladeWidth = bladeWidth + 10; // Make collision blade 10px wider than visual (bladeWidth is 10px)
+
+        // Local P0 (tip-left): (-collisionBladeWidth / 2, -(beamHeight + hiltHeight/2))
+        // Local P1 (tip-right): (collisionBladeWidth / 2, -(beamHeight + hiltHeight/2))
+        // Local P2 (hilt-join-right): (collisionBladeWidth / 2, -hiltHeight/2)
+        // Local P3 (hilt-join-left): (-collisionBladeWidth / 2, -hiltHeight/2)
+        const localPoints = [
+          { x: -collisionBladeWidth / 2, y: -(beamHeight + hiltHeight / 2) }, // Tip-left
+          { x:  collisionBladeWidth / 2, y: -(beamHeight + hiltHeight / 2) }, // Tip-right
+          { x:  collisionBladeWidth / 2, y: -hiltHeight / 2 },                // Hilt-join-right
+          { x: -collisionBladeWidth / 2, y: -hiltHeight / 2 }                 // Hilt-join-left
+        ];
+
+        const bladePolygon_gameAreaRelative = localPoints.map(p => {
+          const rotatedX = p.x * Math.cos(tiltAngleRad) - p.y * Math.sin(tiltAngleRad);
+          const rotatedY = p.x * Math.sin(tiltAngleRad) + p.y * Math.cos(tiltAngleRad);
+          return {
+            x: rotatedX + pivotX_gameAreaRelative,
+            y: rotatedY + pivotY_gameAreaRelative
+          };
+        });
+
+        // Calculate shot center point
         const shotRect = shotComponentInstance.el.nativeElement.getBoundingClientRect();
+        const shotCenterX_gameAreaRelative = (shotRect.left - gameAreaRect.left) + (shotRect.width / 2);
+        const shotCenterY_gameAreaRelative = (shotRect.top - gameAreaRect.top) + (shotRect.height / 2);
+        const shotCenterPoint_gameAreaRelative = { x: shotCenterX_gameAreaRelative, y: shotCenterY_gameAreaRelative };
 
-        const EFFECTIVE_LIGHTSABER_COLLISION_WIDTH = 70; // pixels
-        const lightsaberHostLeftEdge = lightsaberRect.left - gameAreaRect.left;
-        const lightsaberHostWidth = lightsaberRect.width;
-        const lightsaberHostCenterX = lightsaberHostLeftEdge + (lightsaberHostWidth / 2);
+        // Debugging logs
+        // console.log('Pivot X:', pivotX_gameAreaRelative, 'Pivot Y:', pivotY_gameAreaRelative);
+        // console.log('Blade Polygon:', bladePolygon_gameAreaRelative);
+        // console.log('Shot Center:', shotCenterPoint_gameAreaRelative);
 
-        const lightsaberCollisionZoneLeft = lightsaberHostCenterX - (EFFECTIVE_LIGHTSABER_COLLISION_WIDTH / 2);
-        const lightsaberCollisionZoneRight = lightsaberHostCenterX + (EFFECTIVE_LIGHTSABER_COLLISION_WIDTH / 2);
+        if (this.isPointInPolygon(shotCenterPoint_gameAreaRelative, bladePolygon_gameAreaRelative)) {
+          console.log(`DEBUG COLLISION DETECTED (Polygon) --- Shot ID: ${shot.id}`);
+          console.log('  Shot Center (X,Y):', shotCenterX_gameAreaRelative, shotCenterY_gameAreaRelative);
+          console.log('  Lightsaber Tilt Angle (Degrees):', tiltAngleDeg); // Use already fetched tiltAngleDeg
+          console.log('  Lightsaber Pivot (X,Y game relative):', pivotX_gameAreaRelative, pivotY_gameAreaRelative);
+          console.log('  Blade Polygon Coordinates (game relative):', bladePolygon_gameAreaRelative);
+          console.log('--- END DEBUG COLLISION (Polygon) ---');
 
-        // lightsaberTop is relative to gameAreaRect, same for lightsaberRect.height
-        const lightsaberTop = lightsaberRect.top - gameAreaRect.top;
+          const incidentAngleRad = shot.angleRadian;
 
-        const collisionBuffer = 10; // pixels - This buffer is now applied to the new collision zones
-        const effectiveLightsaberLeft = lightsaberCollisionZoneLeft - collisionBuffer;
-        const effectiveLightsaberRight = lightsaberCollisionZoneRight + collisionBuffer;
-        const effectiveLightsaberTop = lightsaberTop - collisionBuffer; // Top boundary uses original top + buffer
-        const effectiveLightsaberBottom = lightsaberTop + lightsaberRect.height + collisionBuffer; // Bottom boundary uses original top + height + buffer
-
-        // Using logical currentX and currentY for collision, as component update might lag by a frame
-        const logicalShotX = shot.currentX;
-        const logicalShotY = shot.currentY;
-
-        const shotElementWidth = shotRect.width; // Use actual rendered width for accuracy
-        const shotElementHeight = shotRect.height; // Use actual rendered height
-
-        if (
-          logicalShotX < effectiveLightsaberRight &&
-          logicalShotX + shotElementWidth > effectiveLightsaberLeft &&
-          logicalShotY < effectiveLightsaberBottom &&
-          logicalShotY + shotElementHeight > effectiveLightsaberTop
-        ) {
-          console.log('DEBUG COLLISION DETECTED --- Shot ID:', shot.id);
-          console.log('  Incoming Shot Angle (Radians):', shot.angleRadian);
-          console.log('  Logical Shot Position (X,Y):', logicalShotX, logicalShotY);
-          console.log('  Shot Element BoundingRect (width, height):', shotElementWidth, shotElementHeight);
-          console.log('  Lightsaber Tilt Angle (Degrees):', this.lightsaberComponent.tiltAngle());
-          // Log the collision zone before buffer, and effective zone after buffer for clarity
-          console.log('  Lightsaber Collision Zone (L,R,T,B before buffer):', lightsaberCollisionZoneLeft, lightsaberCollisionZoneRight, lightsaberTop, lightsaberTop + lightsaberRect.height);
-          console.log('  Lightsaber Effective Edges (L,R,T,B after buffer):', effectiveLightsaberLeft, effectiveLightsaberRight, effectiveLightsaberTop, effectiveLightsaberBottom);
-          console.log('  Lightsaber Host Rect (absolute from getBoundingClientRect()):', lightsaberRect);
-          console.log('--- END DEBUG COLLISION ---');
-
-          const incidentAngleRad = shot.angleRadian; // Keep for logging comparison
-
-          // New Deflection Logic
-          const lightsaberTiltDeg = this.lightsaberComponent.tiltAngle();
-          const tiltRad = lightsaberTiltDeg * (Math.PI / 180);
+          // New Deflection Logic (same as before)
+          // const lightsaberTiltDeg = this.lightsaberComponent.tiltAngle(); // Already have tiltAngleDeg
+          const currentTiltRad = tiltAngleRad; // Use already calculated tiltAngleRad
 
           const baseUpAngleRad = -Math.PI / 2; // Straight up
           const tiltInfluenceFactor = 0.8;
 
-          shot.angleRadian = baseUpAngleRad + (tiltRad * tiltInfluenceFactor);
+          shot.angleRadian = baseUpAngleRad + (currentTiltRad * tiltInfluenceFactor);
 
-          console.log(`New Deflection: Shot ${shot.id} original angle ${incidentAngleRad.toFixed(2)}, new angle ${shot.angleRadian.toFixed(2)} (Tilt: ${lightsaberTiltDeg.toFixed(1)}deg)`);
+          console.log(`New Deflection: Shot ${shot.id} original angle ${incidentAngleRad.toFixed(2)}, new angle ${shot.angleRadian.toFixed(2)} (Tilt: ${tiltAngleDeg.toFixed(1)}deg)`);
 
           this.score.update(s => s + 1);
-          // Shot is deflected, not removed. It continues to be updated.
-          // The filter will keep it because we don't return false here.
+          // Shot is deflected, not removed.
         }
       }
       return true; // Keep shot if not off-screen and not deflected (or deflected and updated)
