@@ -288,18 +288,24 @@ export class GameAreaComponent implements OnDestroy, AfterViewInit {
 
     // Move shots and check for collisions
     this.activeShots.update(shots => shots.filter(shot => {
+      console.log(`Processing shot ${shot.id} at Y: ${shot.currentY}, X: ${shot.currentX}, Speed: ${this.shotSpeed}, Angle: ${shot.angleRadian}`);
       // Update shot position based on angle and speed
       shot.currentX += Math.cos(shot.angleRadian) * this.shotSpeed;
       shot.currentY += Math.sin(shot.angleRadian) * this.shotSpeed;
 
-      // Update corresponding BlasterShotComponent instance
+      console.log(`Shot ${shot.id} BEFORE FIND. Updated Y: ${shot.currentY}`);
       const shotComponentInstance = this.blasterShotComponents.find(c => c.id() === shot.id);
+      console.log(`Shot ${shot.id} AFTER FIND. Instance found: ${!!shotComponentInstance}`);
+
       if (shotComponentInstance) {
+        console.log(`Shot ${shot.id} BEFORE COMPONENT UPDATE. currentX: ${shotComponentInstance.currentX}, currentY: ${shotComponentInstance.currentY}`);
         shotComponentInstance.currentX = shot.currentX;
         shotComponentInstance.currentY = shot.currentY;
+        console.log(`Shot ${shot.id} AFTER COMPONENT UPDATE. new currentX: ${shotComponentInstance.currentX}, new currentY: ${shotComponentInstance.currentY}`);
       } else if (shot.currentY < this.#gameAreaHeight / 2) { // Only warn if shot is relatively new and component not found
-        console.warn(`BlasterShotComponent instance not found for id: ${shot.id} early in its lifecycle.`);
+        console.warn(`BlasterShotComponent instance not found for id: ${shot.id} early in its lifecycle. Shot Y: ${shot.currentY}`);
       }
+      console.log(`Shot ${shot.id} AFTER COMPONENT LOGIC. Y: ${shot.currentY}`);
 
       // Remove shot if it goes off-screen (top - deflected)
       if (shot.currentY < 0) {
@@ -307,8 +313,23 @@ export class GameAreaComponent implements OnDestroy, AfterViewInit {
       }
 
       // Remove shot if it goes off-screen (bottom, left, or right)
-      if (shot.currentY >= this.#gameAreaHeight || shot.currentX < 0 || shot.currentX > this.#gameAreaWidth) {
-        this.registerHit(); // Register a hit when a shot is missed (goes off-screen)
+      if (shot.currentY >= this.#gameAreaHeight) {
+        console.log(`Shot ${shot.id} CROSSED bottom boundary. currentY: ${shot.currentY}, gameAreaHeight: ${this.#gameAreaHeight}`);
+        shot.currentY = this.#gameAreaHeight; // Explicitly set Y to gameAreaHeight
+
+        // Update the component's visual position immediately if possible
+        const componentInst = this.blasterShotComponents.find(c => c.id() === shot.id);
+        if (componentInst) {
+          componentInst.currentY = shot.currentY;
+        }
+
+        console.log(`Shot ${shot.id} PRE-REGISTER_HIT. Adjusted Y: ${shot.currentY}. Calling registerHit now.`);
+        this.registerHit(); // Register a hit
+        return false; // Remove from activeShots
+      }
+
+      // Separate condition for shots going off left or right, without registering a hit
+      if (shot.currentX < 0 || shot.currentX > this.#gameAreaWidth) {
         return false; // Remove from activeShots
       }
 
@@ -389,7 +410,7 @@ export class GameAreaComponent implements OnDestroy, AfterViewInit {
   #checkAndProcessGameOver(newlyHitPart: BodyPart): void {
     if (this.isGameOver()) return; // Already game over, no need to re-check
 
-    // Only a head shot can end the game.
+    // Only a headshot can end the game.
     if (newlyHitPart === BodyPart.Head) {
       this.isGameOver.set(true);
       this.killingBlowPart.set(BodyPart.Head); // Set killingBlowPart to Head
