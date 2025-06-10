@@ -1,7 +1,6 @@
 import {
   AfterViewInit,
   Component,
-  computed,
   effect,
   ElementRef,
   inject,
@@ -18,7 +17,14 @@ import {GameSettingsService} from '../services/game-settings.service';
 import {DifficultyMode} from '../models/difficulty.model';
 import {GameState} from '../models/game-state.model';
 import {BodyPart} from '../models/body-part.model';
-import {BlasterShot} from '../models/blaster-shot.model';
+
+interface BlasterShot {
+  id: string;
+  currentX: number; // Current logical X position
+  currentY: number; // Current logical Y position
+  angleRadian: number; // Angle of the shot in radians
+  componentRef?: BlasterShotComponent; // Keep a reference if needed
+}
 
 
 @Component({
@@ -39,7 +45,6 @@ export class GameAreaComponent implements OnDestroy, AfterViewInit {
   activeShots = signal<BlasterShot[]>([]);
   score = signal<number>(0);
   hitBodyParts = signal<Set<BodyPart>>(new Set());
-  printHitBodyParts = computed(() => Array.from(this.hitBodyParts()).map(part => BodyPart[part]).join(', '));
   isGameOver = signal<boolean>(false);
   killingBlowPart = signal<BodyPart | null>(null); // Stores the part that caused game over
   availableBodyParts: BodyPart[] = Object.values(BodyPart).filter(value => typeof value === 'number') as BodyPart[];
@@ -161,7 +166,7 @@ export class GameAreaComponent implements OnDestroy, AfterViewInit {
     console.log('startGame called in Playing state.');
     this.#gameLoopInterval = setInterval(() => {
       this.updateGame();
-    }, 16); // Roughly 60 FPS
+    }, 10); // Roughly 100 FPS
 
     // Schedule the first shot
     this.#shotTimerId = setTimeout(() => {
@@ -192,8 +197,36 @@ export class GameAreaComponent implements OnDestroy, AfterViewInit {
     }
 
     const unhitParts = this.availableBodyParts.filter(part => !this.hitBodyParts().has(part));
-    const randomPartIndex = Math.floor(Math.random() * unhitParts.length);
-    const partJustHit = unhitParts[randomPartIndex];
+
+    let selectableParts: BodyPart[];
+
+    // If there are other parts available besides Head, exclude Head from selection.
+    if (unhitParts.length > 1 && unhitParts.includes(BodyPart.Head)) {
+      selectableParts = unhitParts.filter(part => part !== BodyPart.Head);
+    }
+      // If Head is the only unhit part, or if Head is not in unhitParts (e.g. already hit, though game should be over)
+      // or unhitParts is empty (should be caught by next check), then selectableParts is unhitParts.
+    // This also covers the case where unhitParts contains only Head.
+    else {
+      selectableParts = unhitParts;
+    }
+
+    // Safeguard: if selectableParts is empty, log an error and return.
+    // This might happen if unhitParts was empty or logic above leads to empty selectableParts.
+    if (selectableParts.length === 0) {
+      // If unhitParts is also empty, it means all parts are hit.
+      // If the game is not over yet, this indicates a potential issue with game over logic or part management.
+      if (unhitParts.length === 0) {
+        console.error('CRITICAL: All parts hit but game not over, or registerHit called inappropriately.');
+      } else {
+        console.error('CRITICAL: selectableParts ended up empty in registerHit. Unhit parts:', unhitParts.map(p => BodyPart[p]).join(', '));
+      }
+      return;
+    }
+
+    const randomPartIndex = Math.floor(Math.random() * selectableParts.length);
+    const partJustHit = selectableParts[randomPartIndex];
+
     this.hitBodyParts.update(currentParts => new Set(currentParts).add(partJustHit));
     console.log('Registered hit on:', BodyPart[partJustHit]);
     this.#checkAndProcessGameOver(partJustHit); // Call the new method with the part that was just hit
@@ -241,7 +274,6 @@ export class GameAreaComponent implements OnDestroy, AfterViewInit {
       currentX: initialX,
       currentY: 0, // Start at the top
       angleRadian: angleRadian,
-      hasBeenDeflected: false,
     };
     this.activeShots.update(shots => [...shots, newShot]);
     this.scheduleNextShot(); // Schedule the next shot
@@ -340,16 +372,9 @@ export class GameAreaComponent implements OnDestroy, AfterViewInit {
 
           shot.angleRadian = baseUpAngleRad + (currentTiltRad * tiltInfluenceFactor);
 
-          // Check if the shot has already been deflected before updating score
-          if (!shot.hasBeenDeflected) {
-            this.score.update(s => s + 1);
-            shot.hasBeenDeflected = true;
-            console.log(`Deflected and scored: Shot ${shot.id}. New angle ${shot.angleRadian.toFixed(2)} (Tilt: ${tiltAngleDeg.toFixed(1)}deg)`);
-          } else {
-            // If already deflected, just update its angle (which is done above)
-            // Optionally, log that it was a re-deflection without a score
-            console.log(`Re-deflected (no score): Shot ${shot.id}. New angle ${shot.angleRadian.toFixed(2)}`);
-          }
+          console.log(`New Deflection: Shot ${shot.id} original angle ${incidentAngleRad.toFixed(2)}, new angle ${shot.angleRadian.toFixed(2)} (Tilt: ${tiltAngleDeg.toFixed(1)}deg)`);
+
+          this.score.update(s => s + 1);
           // Shot is deflected, not removed.
         }
       }
@@ -364,30 +389,17 @@ export class GameAreaComponent implements OnDestroy, AfterViewInit {
   #checkAndProcessGameOver(newlyHitPart: BodyPart): void {
     if (this.isGameOver()) return; // Already game over, no need to re-check
 
-    const currentHits = this.hitBodyParts();
-    let gameOverTriggeredBy: BodyPart | null = null;
-
-    // Check conditions based on the newly hit part
-    if (newlyHitPart === BodyPart.Head && currentHits.has(BodyPart.Head)) {
-      gameOverTriggeredBy = BodyPart.Head;
-    } else if (newlyHitPart === BodyPart.Torso && currentHits.has(BodyPart.Torso)) {
-      gameOverTriggeredBy = BodyPart.Torso;
-    } else if (
-      (newlyHitPart === BodyPart.LeftArm || newlyHitPart === BodyPart.RightArm) &&
-      currentHits.has(BodyPart.LeftArm) &&
-      currentHits.has(BodyPart.RightArm)
-    ) {
-      // If an arm was hit and now both are hit, that arm is the trigger
-      gameOverTriggeredBy = newlyHitPart;
-    }
-
-    // Note: If a non-critical part like a leg is hit, gameOverTriggeredBy remains null.
-    if (gameOverTriggeredBy !== null) {
+    // Only a head shot can end the game.
+    if (newlyHitPart === BodyPart.Head) {
       this.isGameOver.set(true);
-      this.killingBlowPart.set(gameOverTriggeredBy);
+      this.killingBlowPart.set(BodyPart.Head); // Set killingBlowPart to Head
       this.gameSettingsService.setGameState(GameState.GameOver);
       this.stopGameMechanics();
-      console.log(`Game Over triggered by: ${BodyPart[gameOverTriggeredBy]}. Full hits: ${Array.from(currentHits).map(p => BodyPart[p]).join(', ')}`);
+      // Log the game over condition, ensuring 'currentHits' is defined or accessed safely if needed for logging.
+      // For simplicity, let's assume currentHits is not strictly needed for this log message anymore,
+      // or ensure it's declared if its contents are desired in the log.
+      const currentHits = this.hitBodyParts(); // Ensure currentHits is available if used in logging
+      console.log(`Game Over triggered by: Head. Full hits: ${Array.from(currentHits).map(p => BodyPart[p]).join(', ')}`);
     }
   }
 

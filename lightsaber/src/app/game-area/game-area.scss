@@ -10,7 +10,6 @@
   height: 100%;
   background-color: #1e1e2f; // Darker, space-like background
   overflow: hidden; // Keep shots and other elements from appearing outside
-  //cursor: none; // Hide default cursor as lightsaber will follow mouse
 
   .score-display {
     position: absolute;
@@ -114,9 +113,9 @@
 
     &.hit {
       background-color: #F44336 !important; // Bright red for hit
-      border-color: #D32F2F !important; // Darker red border for hit
-      opacity: 0.6; // Slightly faded when hit
-      // text-decoration: line-through; // Optional: if there was text
+      border: 2px dashed #D32F2F !important; // More pronounced dashed red border
+      opacity: 0.7; // Slightly more visible than before
+      animation: hit-feedback-animation 0.3s ease-out;
     }
 
     &.killing-blow {
@@ -133,50 +132,54 @@
   }
 
   .head {
-    width: 20px;
-    height: 20px;
+    width: 24px; // Slightly larger
+    height: 24px;
     border-radius: 50%;
   }
 
   .torso-arms-container {
     display: flex;
-    align-items: flex-start; // Align arms to the top of the torso block
+    align-items: flex-end; // Align arms to the bottom of torso for a more natural shoulder line
     justify-content: center;
-    margin-bottom: 2px;
+    margin-bottom: 1px; // Reduced margin
   }
 
   .torso {
-    width: 28px;
-    height: 45px;
-    margin: 0 2px; // Give space for arms if they were directly adjacent without explicit positioning
+    width: 30px;  // Slightly wider
+    height: 40px; // Shorter for better proportion with head and limbs
+    margin: 0;    // Arms will be positioned to overlap slightly or abut
+    border-radius: 5px 5px 0 0; // Rounded top shoulders
   }
 
   .arm {
-    width: 10px;
-    height: 38px; // Slightly shorter than torso
-    background-color: #8BC34A; // Lighter green for limbs
+    width: 8px;   // Thinner arms
+    height: 35px; // Adjusted height
+    background-color: #8BC34A;
     border-color: #689F38;
+    border-radius: 4px; // Rounded ends
 
     &.left-arm {
-      // order: -1; // if flex items, or rely on margin/positioning
+      margin-right: -1px; // Slight overlap with torso
     }
 
     &.right-arm {
-      // order: 1;
+      margin-left: -1px; // Slight overlap with torso
     }
   }
 
   .legs-container {
     display: flex;
     justify-content: center;
+    margin-top: -1px; // Connect legs more closely to torso
   }
 
   .leg {
-    width: 12px;
-    height: 40px;
-    background-color: #8BC34A; // Lighter green for limbs
+    width: 10px;  // Thinner legs
+    height: 35px; // Adjusted height
+    background-color: #8BC34A;
     border-color: #689F38;
-    margin: 0 2px; // Spacing between legs
+    border-radius: 0 0 4px 4px; // Rounded bottoms
+    margin: 0 1px; // Closer spacing
   }
 }
 
@@ -184,10 +187,34 @@
 @keyframes pulse-animation {
   0% {
     transform: scale(1);
-    box-shadow: 0 0 8px 4px gold;
+    box-shadow: 0 0 10px 5px gold; // Slightly larger base shadow
+    border-color: yellow; // Start with a yellow border
   }
-  100% { // Changed to 100% for alternate direction, effectively 50% of a full non-alternating animation
-    transform: scale(1.1);
-    box-shadow: 0 0 15px 7px yellow; // Slightly different shadow color for pulse peak
+  100% {
+    transform: scale(1.25); // Increased scale
+    box-shadow: 0 0 25px 15px #ffdd57; // More prominent and slightly lighter yellow shadow
+    border-color: #ffcc00; // Intense yellow border at peak
+  }
+}
+
+// Keyframes for hit feedback animation
+@keyframes hit-feedback-animation {
+  0% {
+    transform: translateX(0);
+    opacity: 0.5;
+  }
+  25% {
+    transform: translateX(-2px);
+  }
+  50% {
+    transform: translateX(2px);
+    opacity: 0.8;
+  }
+  75% {
+    transform: translateX(-1px);
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 0.7; // Settle to the final opacity
   }
 }
