@@ -6,7 +6,6 @@ import {
   ElementRef,
   inject,
   OnDestroy,
-  OnInit,
   QueryList,
   signal,
   ViewChild,
@@ -35,29 +34,15 @@ interface BlasterShot {
   templateUrl: './game-area.html',
   styleUrls: ['./game-area.scss']
 })
-export class GameAreaComponent implements OnInit, OnDestroy, AfterViewInit {
-  // Helper function for collision detection
-  private isPointInPolygon(point: { x: number, y: number }, polygon: { x: number, y: number }[]): boolean {
-    let inside = false;
-    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-      const xi = polygon[i].x, yi = polygon[i].y;
-      const xj = polygon[j].x, yj = polygon[j].y;
-
-      const intersect = ((yi > point.y) !== (yj > point.y))
-        && (point.x < (xj - xi) * (point.y - yi) / (yj - yi) + xi);
-      if (intersect) inside = !inside;
-    }
-    return inside;
-  }
-
+export class GameAreaComponent implements OnDestroy, AfterViewInit {
   @ViewChild('gameAreaContainer') gameAreaContainer!: ElementRef<HTMLDivElement>;
   @ViewChild(LightsaberComponent) lightsaberComponent!: LightsaberComponent;
   @ViewChildren(BlasterShotComponent) blasterShotComponents!: QueryList<BlasterShotComponent>;
 
   gameSettingsService = inject(GameSettingsService);
   currentGameState = this.gameSettingsService.getGameState();
-  public BodyPart = BodyPart; // Expose enum to template
-  public GameState = GameState; // Expose enum to template
+  BodyPart = BodyPart; // Expose enum to template
+  GameState = GameState; // Expose enum to template
   activeShots = signal<BlasterShot[]>([]);
   score = signal<number>(0);
   hitBodyParts = signal<Set<BodyPart>>(new Set());
@@ -66,10 +51,10 @@ export class GameAreaComponent implements OnInit, OnDestroy, AfterViewInit {
   killingBlowPart = signal<BodyPart | null>(null); // Stores the part that caused game over
   availableBodyParts: BodyPart[] = Object.values(BodyPart).filter(value => typeof value === 'number') as BodyPart[];
 
-  private gameLoopInterval: any;
-  private shotTimerId: any; // For randomized shot timing
-  private gameAreaWidth: number = 0;
-  private gameAreaHeight: number = 0;
+  #gameLoopInterval: any;
+  #shotTimerId: any; // For randomized shot timing
+  #gameAreaWidth: number = 0;
+  #gameAreaHeight: number = 0;
 
   shotSpeed: number = 5; // Pixels per frame
   shotSpawnRate: number = 1500; // Milliseconds (used for Padawan and first shot)
@@ -96,8 +81,8 @@ export class GameAreaComponent implements OnInit, OnDestroy, AfterViewInit {
               console.error("CRITICAL: GameAreaComponent's gameAreaContainer not found when trying to start game in Playing state.");
               return;
             }
-            this.gameAreaWidth = this.gameAreaContainer.nativeElement.offsetWidth;
-            this.gameAreaHeight = this.gameAreaContainer.nativeElement.offsetHeight;
+            this.#gameAreaWidth = this.gameAreaContainer.nativeElement.offsetWidth;
+            this.#gameAreaHeight = this.gameAreaContainer.nativeElement.offsetHeight;
 
             if (this.lightsaberComponent) {
               console.log("LightsaberComponent found, proceeding to start game.");
@@ -115,17 +100,13 @@ export class GameAreaComponent implements OnInit, OnDestroy, AfterViewInit {
     });
   }
 
-  ngOnInit(): void {
-    // Game loop will be started in ngAfterViewInit to ensure view children are available
-  }
-
   ngAfterViewInit(): void {
     if (!this.gameAreaContainer || !this.gameAreaContainer.nativeElement) {
       console.error("Game area container not found!");
       return;
     }
-    this.gameAreaWidth = this.gameAreaContainer.nativeElement.offsetWidth;
-    this.gameAreaHeight = this.gameAreaContainer.nativeElement.offsetHeight;
+    this.#gameAreaWidth = this.gameAreaContainer.nativeElement.offsetWidth;
+    this.#gameAreaHeight = this.gameAreaContainer.nativeElement.offsetHeight;
 
     // Initialize shot speed based on current difficulty setting
     this.updateShotSpeedAndSpawnTime(this.gameSettingsService.getDifficultyMode()());
@@ -158,11 +139,11 @@ export class GameAreaComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   resetGame(): void {
-    if (this.gameLoopInterval) {
-      clearInterval(this.gameLoopInterval);
+    if (this.#gameLoopInterval) {
+      clearInterval(this.#gameLoopInterval);
     }
-    if (this.shotTimerId) {
-      clearTimeout(this.shotTimerId);
+    if (this.#shotTimerId) {
+      clearTimeout(this.#shotTimerId);
     }
     this.activeShots.set([]); // Clear any existing shots
     this.score.set(0); // Reset score
@@ -183,24 +164,24 @@ export class GameAreaComponent implements OnInit, OnDestroy, AfterViewInit {
     this.score.set(0);
 
     console.log('startGame called in Playing state.');
-    this.gameLoopInterval = setInterval(() => {
+    this.#gameLoopInterval = setInterval(() => {
       this.updateGame();
     }, 16); // Roughly 60 FPS
 
     // Schedule the first shot
-    this.shotTimerId = setTimeout(() => {
+    this.#shotTimerId = setTimeout(() => {
       this.spawnBlasterShot();
     }, this.shotSpawnRate); // Use current shotSpawnRate for the very first shot
   }
 
   stopGameMechanics(): void {
-    if (this.gameLoopInterval) {
-      clearInterval(this.gameLoopInterval);
-      this.gameLoopInterval = null; // Ensure it's marked as cleared
+    if (this.#gameLoopInterval) {
+      clearInterval(this.#gameLoopInterval);
+      this.#gameLoopInterval = null; // Ensure it's marked as cleared
     }
-    if (this.shotTimerId) {
-      clearTimeout(this.shotTimerId);
-      this.shotTimerId = null; // Ensure it's marked as cleared
+    if (this.#shotTimerId) {
+      clearTimeout(this.#shotTimerId);
+      this.#shotTimerId = null; // Ensure it's marked as cleared
     }
     console.log('Game mechanics stopped.');
     // Clear active shots on game over
@@ -242,22 +223,22 @@ export class GameAreaComponent implements OnInit, OnDestroy, AfterViewInit {
         break;
     }
 
-    this.shotTimerId = setTimeout(() => {
+    this.#shotTimerId = setTimeout(() => {
       this.spawnBlasterShot();
     }, randomDelay);
   }
 
   spawnBlasterShot(): void {
-    if (this.isGameOver() || !this.gameAreaWidth || this.gameAreaHeight === 0) return;
+    if (this.isGameOver() || !this.#gameAreaWidth || this.#gameAreaHeight === 0) return;
 
     const shotWidth = 8; // Approximate width of blaster-shot, should match CSS
-    const initialX = Math.random() * (this.gameAreaWidth - shotWidth);
-    const targetX = Math.random() * (this.gameAreaWidth - shotWidth); // Target X at the bottom
+    const initialX = Math.random() * (this.#gameAreaWidth - shotWidth);
+    const targetX = Math.random() * (this.#gameAreaWidth - shotWidth); // Target X at the bottom
 
     // Calculate angle
     // Vector from (initialX, 0) to (targetX, this.gameAreaHeight)
     const deltaX = targetX - initialX;
-    const deltaY = this.gameAreaHeight; // Always positive, shots move downwards
+    const deltaY = this.#gameAreaHeight; // Always positive, shots move downwards
     const angleRadian = Math.atan2(deltaY, deltaX);
 
     const newShot: BlasterShot = {
@@ -275,7 +256,6 @@ export class GameAreaComponent implements OnInit, OnDestroy, AfterViewInit {
       return;
     }
 
-    const lightsaberRect = this.lightsaberComponent.el.nativeElement.getBoundingClientRect();
     const gameAreaRect = this.gameAreaContainer.nativeElement.getBoundingClientRect();
 
     // Move shots and check for collisions
@@ -289,12 +269,12 @@ export class GameAreaComponent implements OnInit, OnDestroy, AfterViewInit {
       if (shotComponentInstance) {
         shotComponentInstance.currentX = shot.currentX;
         shotComponentInstance.currentY = shot.currentY;
-      } else if (shot.currentY < this.gameAreaHeight / 2) { // Only warn if shot is relatively new and component not found
+      } else if (shot.currentY < this.#gameAreaHeight / 2) { // Only warn if shot is relatively new and component not found
         console.warn(`BlasterShotComponent instance not found for id: ${shot.id} early in its lifecycle.`);
       }
 
       // Remove shot if it goes off-screen (bottom, left, or right)
-      if (shot.currentY > this.gameAreaHeight || shot.currentX < 0 || shot.currentX > this.gameAreaWidth) {
+      if (shot.currentY > this.#gameAreaHeight || shot.currentX < 0 || shot.currentX > this.#gameAreaWidth) {
         this.registerHit(); // Register a hit when a shot is missed (goes off-screen)
         return false; // Remove from activeShots
       }
@@ -302,7 +282,7 @@ export class GameAreaComponent implements OnInit, OnDestroy, AfterViewInit {
       // Collision detection
       if (shotComponentInstance && shotComponentInstance.el && shotComponentInstance.el.nativeElement) {
         // TODO: Ideally, get these from LightsaberComponent's properties
-        const beamHeight = 150; // px 
+        const beamHeight = 150; // px
         const hiltHeight = 40; // px
         const bladeWidth = 10; // px
 
@@ -322,17 +302,9 @@ export class GameAreaComponent implements OnInit, OnDestroy, AfterViewInit {
         const pivotY_viewport = appliedTranslateY + transformOriginY_inElement;
         const pivotY_gameAreaRelative = pivotY_viewport - gameAreaRect.top;
 
-        // Define Blade Local Coordinates (relative to Pivot at hilt bottom-center, Y increases upwards)
-        // Pivot is effectively at the center of the lightsaber's rotation point as defined by its transformOrigin.
-        // The blade extends upwards from the hilt.
-
         // Implement generous collision model
         const collisionBladeWidth = bladeWidth + 10; // Make collision blade 10px wider than visual (bladeWidth is 10px)
 
-        // Local P0 (tip-left): (-collisionBladeWidth / 2, -(beamHeight + hiltHeight/2))
-        // Local P1 (tip-right): (collisionBladeWidth / 2, -(beamHeight + hiltHeight/2))
-        // Local P2 (hilt-join-right): (collisionBladeWidth / 2, -hiltHeight/2)
-        // Local P3 (hilt-join-left): (-collisionBladeWidth / 2, -hiltHeight/2)
         const localPoints = [
           { x: -collisionBladeWidth / 2, y: -(beamHeight + hiltHeight / 2) }, // Tip-left
           { x:  collisionBladeWidth / 2, y: -(beamHeight + hiltHeight / 2) }, // Tip-right
@@ -355,23 +327,11 @@ export class GameAreaComponent implements OnInit, OnDestroy, AfterViewInit {
         const shotCenterY_gameAreaRelative = (shotRect.top - gameAreaRect.top) + (shotRect.height / 2);
         const shotCenterPoint_gameAreaRelative = { x: shotCenterX_gameAreaRelative, y: shotCenterY_gameAreaRelative };
 
-        // Debugging logs
-        // console.log('Pivot X:', pivotX_gameAreaRelative, 'Pivot Y:', pivotY_gameAreaRelative);
-        // console.log('Blade Polygon:', bladePolygon_gameAreaRelative);
-        // console.log('Shot Center:', shotCenterPoint_gameAreaRelative);
-
-        if (this.isPointInPolygon(shotCenterPoint_gameAreaRelative, bladePolygon_gameAreaRelative)) {
-          console.log(`DEBUG COLLISION DETECTED (Polygon) --- Shot ID: ${shot.id}`);
-          console.log('  Shot Center (X,Y):', shotCenterX_gameAreaRelative, shotCenterY_gameAreaRelative);
-          console.log('  Lightsaber Tilt Angle (Degrees):', tiltAngleDeg); // Use already fetched tiltAngleDeg
-          console.log('  Lightsaber Pivot (X,Y game relative):', pivotX_gameAreaRelative, pivotY_gameAreaRelative);
-          console.log('  Blade Polygon Coordinates (game relative):', bladePolygon_gameAreaRelative);
-          console.log('--- END DEBUG COLLISION (Polygon) ---');
+        if (this.#isPointInPolygon(shotCenterPoint_gameAreaRelative, bladePolygon_gameAreaRelative)) {
 
           const incidentAngleRad = shot.angleRadian;
 
-          // New Deflection Logic (same as before)
-          // const lightsaberTiltDeg = this.lightsaberComponent.tiltAngle(); // Already have tiltAngleDeg
+          // Deflection Logic
           const currentTiltRad = tiltAngleRad; // Use already calculated tiltAngleRad
 
           const baseUpAngleRad = -Math.PI / 2; // Straight up
@@ -421,5 +381,19 @@ export class GameAreaComponent implements OnInit, OnDestroy, AfterViewInit {
       this.stopGameMechanics();
       console.log(`Game Over triggered by: ${BodyPart[gameOverTriggeredBy]}. Full hits: ${Array.from(currentHits).map(p => BodyPart[p]).join(', ')}`);
     }
+  }
+
+  // Helper function for collision detection
+  #isPointInPolygon(point: { x: number, y: number }, polygon: { x: number, y: number }[]): boolean {
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const xi = polygon[i].x, yi = polygon[i].y;
+      const xj = polygon[j].x, yj = polygon[j].y;
+
+      const intersect = ((yi > point.y) !== (yj > point.y))
+        && (point.x < (xj - xi) * (point.y - yi) / (yj - yi) + xi);
+      if (intersect) inside = !inside;
+    }
+    return inside;
   }
 }

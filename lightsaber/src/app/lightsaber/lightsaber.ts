@@ -13,22 +13,22 @@ export class LightsaberComponent implements OnInit {
   tiltAngle = signal<number>(0);
 
   // Properties for damped movement
-  private targetX: number = 0;
-  private targetY: number = 0;
-  private readonly dampingFactor: number = 0.08;
-  private movementInterval: any;
+  #targetX: number = 0;
+  #targetY: number = 0;
+  readonly #dampingFactor: number = 0.08;
+  #movementInterval: any;
 
-  private readonly beamHeight: number = 150;
-  private readonly hiltHeight: number = 40;
-  private prevMouseX: number = 0;
-  private prevMouseY: number = 0;
+  readonly #beamHeight: number = 150;
+  readonly #hiltHeight: number = 40;
+  #prevMouseX: number = 0;
+  #prevMouseY: number = 0;
 
   // Properties for tilt return mechanism
-  private lastMouseActivityTime: number = Date.now();
-  private readonly MOUSE_IDLE_TIMEOUT_MS = 100;
-  private readonly TILT_RETURN_INTERVAL_MS = 50;
-  private readonly TILT_DECAY_FACTOR = 0.8;
-  private readonly MIN_TILT_TO_RETURN = 0.5;
+  #lastMouseActivityTime: number = Date.now();
+  readonly MOUSE_IDLE_TIMEOUT_MS = 100;
+  readonly TILT_RETURN_INTERVAL_MS = 50;
+  readonly TILT_DECAY_FACTOR = 0.8;
+  readonly MIN_TILT_TO_RETURN = 0.5;
 
   constructor(public el: ElementRef<HTMLElement>) {
     // Effect for position and TILT
@@ -51,19 +51,19 @@ export class LightsaberComponent implements OnInit {
   ngOnInit(): void {
     // Initialize positions
     this.positionX.set(window.innerWidth / 2);
-    this.targetX = window.innerWidth / 2;
+    this.#targetX = window.innerWidth / 2;
     this.positionY.set(window.innerHeight / 2);
-    this.targetY = window.innerHeight / 2;
+    this.#targetY = window.innerHeight / 2;
 
-    this.prevMouseX = window.innerWidth / 2; // Initialize prevMouseX to current position
-    this.prevMouseY = window.innerHeight / 2; // Initialize prevMouseY to current position
+    this.#prevMouseX = window.innerWidth / 2; // Initialize prevMouseX to current position
+    this.#prevMouseY = window.innerHeight / 2; // Initialize prevMouseY to current position
 
     // Ensure transformOrigin is set here; once nativeElement is available
-    this.el.nativeElement.style.transformOrigin = `50% ${this.beamHeight + (this.hiltHeight / 2)}px`; // Updated line
+    this.el.nativeElement.style.transformOrigin = `50% ${this.#beamHeight + (this.#hiltHeight / 2)}px`; // Updated line
 
     // Tilt decay interval (existing)
     setInterval(() => {
-      if (Date.now() - this.lastMouseActivityTime > this.MOUSE_IDLE_TIMEOUT_MS) {
+      if (Date.now() - this.#lastMouseActivityTime > this.MOUSE_IDLE_TIMEOUT_MS) {
         if (Math.abs(this.tiltAngle()) > this.MIN_TILT_TO_RETURN) {
           this.tiltAngle.set(this.tiltAngle() * this.TILT_DECAY_FACTOR);
         } else if (this.tiltAngle() !== 0) {
@@ -73,40 +73,30 @@ export class LightsaberComponent implements OnInit {
     }, this.TILT_RETURN_INTERVAL_MS);
 
     // Damped movement interval
-    this.movementInterval = setInterval(() => {
-      this.positionX.update(current => current + (this.targetX - current) * this.dampingFactor);
-      this.positionY.update(current => current + (this.targetY - current) * this.dampingFactor);
+    this.#movementInterval = setInterval(() => {
+      this.positionX.update(current => current + (this.#targetX - current) * this.#dampingFactor);
+      this.positionY.update(current => current + (this.#targetY - current) * this.#dampingFactor);
     }, 16); // Target ~60FPS
-  }
-
-  ngOnDestroy() {
-    if (this.movementInterval) {
-      clearInterval(this.movementInterval);
-    }
-    // The tilt decay interval is anonymous and cannot be cleared here without refactoring.
   }
 
   @HostListener('document:mousemove', ['$event'])
   onMouseMove(event: MouseEvent) {
-    this.lastMouseActivityTime = Date.now(); // Update activity time
+    this.#lastMouseActivityTime = Date.now(); // Update activity time
 
     const newX = event.clientX;
     const newY = event.clientY;
 
-    this.targetX = newX;
-    this.targetY = newY;
+    this.#targetX = newX;
+    this.#targetY = newY;
 
     // Delta calculation for tilt (remains the same)
-    const deltaX = newX - this.prevMouseX;
-    this.prevMouseX = newX;
-    const deltaY = newY - this.prevMouseY;
-    this.prevMouseY = newY;
+    const deltaX = newX - this.#prevMouseX;
+    this.#prevMouseX = newX;
+    const deltaY = newY - this.#prevMouseY;
+    this.#prevMouseY = newY;
 
     // Determine maximum tilt magnitude
     let maxTiltMagnitude = 90;
-    if (deltaY < 0) { // Mouse moving up
-      maxTiltMagnitude = 120;
-    }
 
     // Tilt logic based on deltaX (horizontal movement)
     const tiltSensitivityFactor = 0.8; // Should be existing
