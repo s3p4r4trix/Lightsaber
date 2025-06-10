@@ -18,14 +18,7 @@ import {GameSettingsService} from '../services/game-settings.service';
 import {DifficultyMode} from '../models/difficulty.model';
 import {GameState} from '../models/game-state.model';
 import {BodyPart} from '../models/body-part.model';
-
-interface BlasterShot {
-  id: string;
-  currentX: number; // Current logical X position
-  currentY: number; // Current logical Y position
-  angleRadian: number; // Angle of the shot in radians
-  componentRef?: BlasterShotComponent; // Keep a reference if needed
-}
+import {BlasterShot} from '../models/blaster-shot.model';
 
 
 @Component({
@@ -122,12 +115,12 @@ export class GameAreaComponent implements OnDestroy, AfterViewInit {
   updateShotSpeedAndSpawnTime(difficulty: DifficultyMode): void {
     switch (difficulty) {
       case DifficultyMode.Knight:
-        this.shotSpeed = 10; // Base speed (5) * 2
-        this.shotSpawnRate = 1000; // Base for first shot, then random
+        this.shotSpeed = 8;
+        this.shotSpawnRate = 1250; // Base for first shot, then random
         break;
       case DifficultyMode.Master:
-        this.shotSpeed = 20; // Base speed (5) * 4
-        this.shotSpawnRate = 500; // Base for first shot, then random
+        this.shotSpeed = 12;
+        this.shotSpawnRate = 1000; // Base for first shot, then random
         break;
       case DifficultyMode.Padawan:
       default:
@@ -214,10 +207,10 @@ export class GameAreaComponent implements OnDestroy, AfterViewInit {
 
     switch (currentDifficulty) {
       case DifficultyMode.Knight:
-        randomDelay = Math.random() * 500 + 500; // 500 to 1000 ms
+        randomDelay = Math.random() * 250 + 1000; // 1000 to 1250 ms
         break;
       case DifficultyMode.Master:
-        randomDelay = Math.random() * 250 + 250; // 250 to 500 ms
+        randomDelay = Math.random() * 250 + 750; // 750 to 1000 ms
         break;
       case DifficultyMode.Padawan:
       default:
@@ -248,6 +241,7 @@ export class GameAreaComponent implements OnDestroy, AfterViewInit {
       currentX: initialX,
       currentY: 0, // Start at the top
       angleRadian: angleRadian,
+      hasBeenDeflected: false,
     };
     this.activeShots.update(shots => [...shots, newShot]);
     this.scheduleNextShot(); // Schedule the next shot
@@ -346,9 +340,16 @@ export class GameAreaComponent implements OnDestroy, AfterViewInit {
 
           shot.angleRadian = baseUpAngleRad + (currentTiltRad * tiltInfluenceFactor);
 
-          console.log(`New Deflection: Shot ${shot.id} original angle ${incidentAngleRad.toFixed(2)}, new angle ${shot.angleRadian.toFixed(2)} (Tilt: ${tiltAngleDeg.toFixed(1)}deg)`);
-
-          this.score.update(s => s + 1);
+          // Check if the shot has already been deflected before updating score
+          if (!shot.hasBeenDeflected) {
+            this.score.update(s => s + 1);
+            shot.hasBeenDeflected = true;
+            console.log(`Deflected and scored: Shot ${shot.id}. New angle ${shot.angleRadian.toFixed(2)} (Tilt: ${tiltAngleDeg.toFixed(1)}deg)`);
+          } else {
+            // If already deflected, just update its angle (which is done above)
+            // Optionally, log that it was a re-deflection without a score
+            console.log(`Re-deflected (no score): Shot ${shot.id}. New angle ${shot.angleRadian.toFixed(2)}`);
+          }
           // Shot is deflected, not removed.
         }
       }
