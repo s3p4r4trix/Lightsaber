@@ -3,7 +3,7 @@ import {CommonModule} from '@angular/common'; // Required for [style.left.px]
 
 @Component({
   selector: 'app-lightsaber',
-  imports: [CommonModule], // Import CommonModule
+  imports: [CommonModule],
   templateUrl: './lightsaber.html',
   styleUrls: ['./lightsaber.scss']
 })
@@ -15,7 +15,6 @@ export class LightsaberComponent implements OnInit {
   private readonly hiltHeight: number = 40;
   private prevMouseX: number = 0;
   private prevMouseY: number = 0;
-  private gameAreaElement: HTMLElement | null = null; // To constrain movement within game area
 
   // Properties for tilt return mechanism
   private lastMouseActivityTime: number = Date.now();
@@ -83,7 +82,7 @@ export class LightsaberComponent implements OnInit {
     }
 
     // Tilt logic based on deltaX (horizontal movement)
-    const tiltSensitivityFactor = 0.7; // Should be existing
+    const tiltSensitivityFactor = 2.5; // Should be existing
     let calculatedTilt = -deltaX * tiltSensitivityFactor;
 
     // Clamp the tilt angle using the determined maxTiltMagnitude

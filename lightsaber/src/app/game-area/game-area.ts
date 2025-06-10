@@ -22,10 +22,10 @@ import {BodyPart} from '../models/body-part.model';
 
 interface BlasterShot {
   id: string;
-  x: number;
-  y: number;
-  currentY: number; // Used for animation directly in template
-  componentRef?: BlasterShotComponent; // Keep a reference if needed, though not strictly for this approach
+  currentX: number; // Current logical X position
+  currentY: number; // Current logical Y position
+  angleRadian: number; // Angle of the shot in radians
+  componentRef?: BlasterShotComponent; // Keep a reference if needed
 }
 
 
@@ -76,7 +76,22 @@ export class GameAreaComponent implements OnInit, OnDestroy, AfterViewInit {
       switch (state) {
         case GameState.Playing:
           this.resetGame(); // Ensure clean state before starting
-          this.startGame();
+          // Use Promise.resolve().then() to ensure view updates and @ViewChild are available
+          Promise.resolve().then(() => {
+            if (!this.gameAreaContainer || !this.gameAreaContainer.nativeElement) {
+              console.error("CRITICAL: GameAreaComponent's gameAreaContainer not found when trying to start game in Playing state.");
+              return;
+            }
+            this.gameAreaWidth = this.gameAreaContainer.nativeElement.offsetWidth;
+            this.gameAreaHeight = this.gameAreaContainer.nativeElement.offsetHeight;
+
+            if (this.lightsaberComponent) {
+              console.log("LightsaberComponent found, proceeding to start game.");
+            } else {
+              console.error("CRITICAL: LightsaberComponent not found when trying to start game in Playing state. Deflection will not work reliably.");
+            }
+            this.startGame();
+          });
           break;
         case GameState.DifficultySelection:
         case GameState.GameOver:
@@ -105,7 +120,7 @@ export class GameAreaComponent implements OnInit, OnDestroy, AfterViewInit {
       // Pass game area reference to lightsaber if needed, or ensure lightsaber can find it.
       // The lightsaber currently tries to find '.game-area-container' itself.
     } else {
-      console.error("Lightsaber component not found after view init!");
+      console.warn("LightsaberComponent not found during ngAfterViewInit. This is expected if the initial game state does not render it. Availability will be confirmed when the game starts.");
     }
   }
 
@@ -174,8 +189,8 @@ export class GameAreaComponent implements OnInit, OnDestroy, AfterViewInit {
       this.shotTimerId = null; // Ensure it's marked as cleared
     }
     console.log('Game mechanics stopped.');
-    // Optionally clear active shots on game over
-    // this.activeShots.set([]);
+    // Clear active shots on game over
+    this.activeShots.set([]);
   }
 
   registerHit(): void {
@@ -187,19 +202,6 @@ export class GameAreaComponent implements OnInit, OnDestroy, AfterViewInit {
     }
 
     const unhitParts = this.availableBodyParts.filter(part => !this.hitBodyParts().has(part));
-
-    if (unhitParts.length === 0) {
-      // All parts hit, this could be an alternative game over or just stop registering.
-      // For now, if all parts are hit and it wasn't game over by other conditions,
-      // it implies the game continues or needs another condition.
-      // We already check isGameOver at the start.
-      console.log('All body parts have been hit.');
-      // Potentially trigger a different game over if all parts hit is a specific condition
-      this.isGameOver.set(true);
-      this.stopGameMechanics();
-      return;
-    }
-
     const randomPartIndex = Math.floor(Math.random() * unhitParts.length);
     const partJustHit = unhitParts[randomPartIndex];
     this.hitBodyParts.update(currentParts => new Set(currentParts).add(partJustHit));
@@ -232,15 +234,23 @@ export class GameAreaComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   spawnBlasterShot(): void {
-    if (this.isGameOver() || !this.gameAreaWidth) return; // Do not spawn if game is over or width not set
+    if (this.isGameOver() || !this.gameAreaWidth || this.gameAreaHeight === 0) return;
 
-    const shotWidth = 8; // Approximate width of blaster-shot, should match CSS if possible
-    const randomX = Math.random() * (this.gameAreaWidth - shotWidth);
+    const shotWidth = 8; // Approximate width of blaster-shot, should match CSS
+    const initialX = Math.random() * (this.gameAreaWidth - shotWidth);
+    const targetX = Math.random() * (this.gameAreaWidth - shotWidth); // Target X at the bottom
+
+    // Calculate angle
+    // Vector from (initialX, 0) to (targetX, this.gameAreaHeight)
+    const deltaX = targetX - initialX;
+    const deltaY = this.gameAreaHeight; // Always positive, shots move downwards
+    const angleRadian = Math.atan2(deltaY, deltaX);
+
     const newShot: BlasterShot = {
       id: `shot-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-      x: randomX,
-      y: 0, // Start at the top
-      currentY: 0,
+      currentX: initialX,
+      currentY: 0, // Start at the top
+      angleRadian: angleRadian,
     };
     this.activeShots.update(shots => [...shots, newShot]);
     this.scheduleNextShot(); // Schedule the next shot
@@ -254,57 +264,91 @@ export class GameAreaComponent implements OnInit, OnDestroy, AfterViewInit {
     const lightsaberRect = this.lightsaberComponent.el.nativeElement.getBoundingClientRect();
     const gameAreaRect = this.gameAreaContainer.nativeElement.getBoundingClientRect();
 
-
     // Move shots and check for collisions
     this.activeShots.update(shots => shots.filter(shot => {
-      shot.currentY += this.shotSpeed;
+      // Update shot position based on angle and speed
+      shot.currentX += Math.cos(shot.angleRadian) * this.shotSpeed;
+      shot.currentY += Math.sin(shot.angleRadian) * this.shotSpeed;
 
-      // Remove shot if it goes off-screen (bottom)
-      if (shot.currentY > this.gameAreaHeight) {
-        this.registerHit(); // Register a hit when a shot is missed
+      // Update corresponding BlasterShotComponent instance
+      const shotComponentInstance = this.blasterShotComponents.find(c => c.id() === shot.id);
+      if (shotComponentInstance) {
+        shotComponentInstance.currentX = shot.currentX;
+        shotComponentInstance.currentY = shot.currentY;
+      } else if (shot.currentY < this.gameAreaHeight / 2) { // Only warn if shot is relatively new and component not found
+        console.warn(`BlasterShotComponent instance not found for id: ${shot.id} early in its lifecycle.`);
+      }
+
+      // Remove shot if it goes off-screen (bottom, left, or right)
+      if (shot.currentY > this.gameAreaHeight || shot.currentX < 0 || shot.currentX > this.gameAreaWidth) {
+        this.registerHit(); // Register a hit when a shot is missed (goes off-screen)
         return false; // Remove from activeShots
       }
 
       // Collision detection
-      // We need the actual rendered positions of blaster shots.
-      // Using their 'id' to find the corresponding DOM element or component instance.
-      const shotComponentInstance = this.blasterShotComponents.find(c => c.id() === shot.id);
-
       if (shotComponentInstance && shotComponentInstance.el && shotComponentInstance.el.nativeElement) {
         const shotRect = shotComponentInstance.el.nativeElement.getBoundingClientRect();
 
-        // Adjust for game area offset if lightsaberRect is relative to viewport and shotRect is too.
-        // The lightsaber position is already relative to the game area if its mousemove is constrained.
-        // The shot's X is its initial X, its Y is animated via transform.
+        const EFFECTIVE_LIGHTSABER_COLLISION_WIDTH = 70; // pixels
+        const lightsaberHostLeftEdge = lightsaberRect.left - gameAreaRect.left;
+        const lightsaberHostWidth = lightsaberRect.width;
+        const lightsaberHostCenterX = lightsaberHostLeftEdge + (lightsaberHostWidth / 2);
 
-        // A simple bounding box collision detection:
-        // Lightsaber X is its center, so calculate its left/right bounds.
-        const lightsaberWidth = lightsaberRect.width;
-        const lightsaberLeft = lightsaberRect.left - gameAreaRect.left; // position relative to game area
-        const lightsaberRight = lightsaberLeft + lightsaberWidth;
-        const lightsaberTop = lightsaberRect.top - gameAreaRect.top; // Y position of the lightsaber top
+        const lightsaberCollisionZoneLeft = lightsaberHostCenterX - (EFFECTIVE_LIGHTSABER_COLLISION_WIDTH / 2);
+        const lightsaberCollisionZoneRight = lightsaberHostCenterX + (EFFECTIVE_LIGHTSABER_COLLISION_WIDTH / 2);
 
-        // Shot's position (relative to game area)
-        const currentShotX = shot.x; // This is the 'left' style value
-        const currentShotY = shot.currentY; // This is the 'translateY' value
+        // lightsaberTop is relative to gameAreaRect, same for lightsaberRect.height
+        const lightsaberTop = lightsaberRect.top - gameAreaRect.top;
 
-        const shotElementWidth = shotRect.width; // actual width
-        const shotElementHeight = shotRect.height; // actual height
+        const collisionBuffer = 10; // pixels - This buffer is now applied to the new collision zones
+        const effectiveLightsaberLeft = lightsaberCollisionZoneLeft - collisionBuffer;
+        const effectiveLightsaberRight = lightsaberCollisionZoneRight + collisionBuffer;
+        const effectiveLightsaberTop = lightsaberTop - collisionBuffer; // Top boundary uses original top + buffer
+        const effectiveLightsaberBottom = lightsaberTop + lightsaberRect.height + collisionBuffer; // Bottom boundary uses original top + height + buffer
+
+        // Using logical currentX and currentY for collision, as component update might lag by a frame
+        const logicalShotX = shot.currentX;
+        const logicalShotY = shot.currentY;
+
+        const shotElementWidth = shotRect.width; // Use actual rendered width for accuracy
+        const shotElementHeight = shotRect.height; // Use actual rendered height
 
         if (
-          currentShotX < lightsaberRight &&
-          currentShotX + shotElementWidth > lightsaberLeft &&
-          currentShotY < lightsaberTop + lightsaberRect.height && // Check bottom of shot against top of lightsaber
-          currentShotY + shotElementHeight > lightsaberTop      // Check top of shot against bottom of lightsaber (hilt)
+          logicalShotX < effectiveLightsaberRight &&
+          logicalShotX + shotElementWidth > effectiveLightsaberLeft &&
+          logicalShotY < effectiveLightsaberBottom &&
+          logicalShotY + shotElementHeight > effectiveLightsaberTop
         ) {
+          console.log('DEBUG COLLISION DETECTED --- Shot ID:', shot.id);
+          console.log('  Incoming Shot Angle (Radians):', shot.angleRadian);
+          console.log('  Logical Shot Position (X,Y):', logicalShotX, logicalShotY);
+          console.log('  Shot Element BoundingRect (width, height):', shotElementWidth, shotElementHeight);
+          console.log('  Lightsaber Tilt Angle (Degrees):', this.lightsaberComponent.tiltAngle());
+          // Log the collision zone before buffer, and effective zone after buffer for clarity
+          console.log('  Lightsaber Collision Zone (L,R,T,B before buffer):', lightsaberCollisionZoneLeft, lightsaberCollisionZoneRight, lightsaberTop, lightsaberTop + lightsaberRect.height);
+          console.log('  Lightsaber Effective Edges (L,R,T,B after buffer):', effectiveLightsaberLeft, effectiveLightsaberRight, effectiveLightsaberTop, effectiveLightsaberBottom);
+          console.log('  Lightsaber Host Rect (absolute from getBoundingClientRect()):', lightsaberRect);
+          console.log('--- END DEBUG COLLISION ---');
+
+          const incidentAngleRad = shot.angleRadian; // Keep for logging comparison
+
+          // New Deflection Logic
+          const lightsaberTiltDeg = this.lightsaberComponent.tiltAngle();
+          const tiltRad = lightsaberTiltDeg * (Math.PI / 180);
+
+          const baseUpAngleRad = -Math.PI / 2; // Straight up
+          const tiltInfluenceFactor = 0.8;
+
+          shot.angleRadian = baseUpAngleRad + (tiltRad * tiltInfluenceFactor);
+
+          console.log(`New Deflection: Shot ${shot.id} original angle ${incidentAngleRad.toFixed(2)}, new angle ${shot.angleRadian.toFixed(2)} (Tilt: ${lightsaberTiltDeg.toFixed(1)}deg)`);
+
           this.score.update(s => s + 1);
-          // Potentially add a sound effect or visual feedback for deflection
-          return false; // Remove shot from activeShots (deflected)
+          // Shot is deflected, not removed. It continues to be updated.
+          // The filter will keep it because we don't return false here.
         }
-      } else if (shot.currentY > 10) { // Give a small grace period for component to render
-        console.warn(`BlasterShotComponent instance not found for id: ${shot.id}`);
       }
-      return true; // Keep shot
+      return true; // Keep shot if not off-screen and not deflected (or deflected and updated)
     }));
   }
 
