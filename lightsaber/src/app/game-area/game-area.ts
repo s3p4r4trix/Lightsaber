@@ -275,8 +275,13 @@ export class GameAreaComponent implements OnDestroy, AfterViewInit {
         console.warn(`BlasterShotComponent instance not found for id: ${shot.id} early in its lifecycle.`);
       }
 
+      // Remove shot if it goes off-screen (top - deflected)
+      if (shot.currentY < 0) {
+        return false; // Remove from activeShots
+      }
+
       // Remove shot if it goes off-screen (bottom, left, or right)
-      if (shot.currentY > this.#gameAreaHeight || shot.currentX < 0 || shot.currentX > this.#gameAreaWidth) {
+      if (shot.currentY >= this.#gameAreaHeight || shot.currentX < 0 || shot.currentX > this.#gameAreaWidth) {
         this.registerHit(); // Register a hit when a shot is missed (goes off-screen)
         return false; // Remove from activeShots
       }
